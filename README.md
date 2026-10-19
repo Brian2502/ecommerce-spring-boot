@@ -1,4 +1,3 @@
-
 # E-Commerce Backend API
 
 A RESTful e-commerce backend built with Java and Spring Boot. The project provides APIs for product management, authentication, shopping carts, and order processing.
@@ -13,6 +12,7 @@ A RESTful e-commerce backend built with Java and Spring Boot. The project provid
 - Maven
 - Docker and Docker Compose
 - JUnit and Mockito
+- GitHub Actions
 
 ## Features
 
@@ -35,17 +35,18 @@ A RESTful e-commerce backend built with Java and Spring Boot. The project provid
 - Cancel orders and restore product stock
 - Pessimistic locking for product stock updates
 
-### Testing
+### Testing and CI
 - Unit tests for service-layer business logic
-- Maven test execution
+- Automated build and test execution with GitHub Actions
+- Docker image build verification in CI
 
 ## Architecture
 
 The application follows a layered architecture:
 
-Client → Controller → Service → Repository → PostgreSQL
+`Client → Controller → Service → Repository → PostgreSQL`
 
-DTOs are used to handle API requests and responses, while Spring Data JPA and Hibernate manage database persistence.
+DTOs handle API requests and responses, while Spring Data JPA and Hibernate manage database persistence.
 
 ## Prerequisites
 
@@ -56,38 +57,48 @@ For local development without Docker, install Java 21, Maven, and PostgreSQL.
 
 ## Run with Docker Compose
 
-1. Clone the repository:
+### 1. Clone the repository
 
-   ```bash
-   git clone <YOUR_GITHUB_REPOSITORY_URL>
-   cd ecommerce
-   ```
+```bash
+git clone https://github.com/Brian2502/ecommerce-spring-boot.git
+cd ecommerce-spring-boot
+```
 
-2. Create your local environment file:
+### 2. Create your environment file
 
-   ```bash
-   Copy-Item .env.example .env
-   ```
+On Windows PowerShell:
 
-3. Edit `.env` and set a secure database password:
+```powershell
+Copy-Item .env.example .env
+```
 
-   ```dotenv
-   DB_PASSWORD=your_local_database_password
-   ```
+On macOS/Linux:
 
-   Use the same password for your local environment configuration. Do not commit `.env`.
+```bash
+cp .env.example .env
+```
 
-4. Start the application and database:
+### 3. Configure environment variables
 
-   ```bash
-   docker compose up -d --build
-   ```
+Edit `.env` and set a secure database password:
 
-5. Check container status:
+```dotenv
+DB_PASSWORD=your_local_database_password
+```
 
-   ```bash
-   docker compose ps
-   ```
+Use the environment variable names defined in `.env.example`. Keep `.env` private and never commit real credentials.
+
+### 4. Build and start the application
+
+```bash
+docker compose up -d --build
+```
+
+### 5. Check container status
+
+```bash
+docker compose ps
+```
 
 The backend listens on port `8081`. The PostgreSQL container is exposed on host port `5433`.
 
@@ -103,7 +114,7 @@ To stop the containers:
 docker compose down
 ```
 
-The PostgreSQL data is stored in a Docker volume so it can persist when containers are stopped or recreated. Do not use `docker compose down -v` unless you intentionally want to remove that volume.
+PostgreSQL data is stored in a Docker volume and can persist when containers are stopped or recreated. Do not use `docker compose down -v` unless you intentionally want to remove the volume and its data.
 
 ## Configuration
 
@@ -113,10 +124,16 @@ Never commit database passwords, JWT secrets, or other credentials.
 
 ## Testing
 
-Run the test suite using the Maven Wrapper:
+Run the test suite using the Maven Wrapper on Windows:
+
+```powershell
+.\mvnw.cmd test
+```
+
+On macOS/Linux:
 
 ```bash
-.\mvnw.cmd test
+./mvnw test
 ```
 
 ## API Overview
@@ -130,11 +147,11 @@ The backend includes API areas for:
 - Shopping carts
 - Orders
 
-Use your preferred API client to send requests to the running backend. Authentication-protected endpoints require a valid JWT.
+Use an API client such as Postman to send requests to the running backend. Protected endpoints require a valid JWT.
 
 ## Future Improvements
 
 - API documentation with OpenAPI/Swagger
-- CI pipeline for automated testing
 - Additional integration tests
 - Production-oriented deployment configuration
+- Expand automated test coverage
