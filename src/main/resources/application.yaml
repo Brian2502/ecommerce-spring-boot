@@ -2,10 +2,13 @@ spring:
   application:
     name: ecommerce
 
+  config:
+    import: optional:file:.env[.properties]
+
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/ecommerce}
     username: ${SPRING_DATASOURCE_USERNAME:postgres}
-    password: ${SPRING_DATASOURCE_PASSWORD:}
+    password: ${DB_PASSWORD}
 
   jpa:
     hibernate:
@@ -14,6 +17,21 @@ spring:
     properties:
       hibernate:
         format_sql: true
+  data:
+    redis:
+      host: localhost
+      port: 6380
+
+  cache:
+    type: redis
+    redis:
+      time-to-live: 600000
+      cache-null-values: false
+
+logging:
+  level:
+    org.springframework.security: DEBUG
+    org.springframework.cache.interceptor: TRACE
 
 server:
   port: 8081

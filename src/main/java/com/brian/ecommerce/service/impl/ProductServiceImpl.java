@@ -15,7 +15,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
-import java.util.List;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
 import java.util.Set;
 
 @Service
@@ -58,6 +59,10 @@ public class ProductServiceImpl implements ProductService {
 
 
     @Override
+    @Cacheable(
+            value = "products",
+            key = "#id"
+    )
     public ProductResponse getProductById(Long id) {
 
         Product product = productRepository.findByIdWithCategory(id)
@@ -70,6 +75,7 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    @CacheEvict(value = "products", key = "#id")
     public ProductResponse updateProduct(
             Long id,
             ProductRequest request) {
@@ -100,6 +106,7 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    @CacheEvict(value = "products", key = "#id")
     public void deleteProduct(Long id) {
 
         Product product = productRepository.findById(id)

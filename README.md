@@ -1,18 +1,19 @@
 # E-Commerce Backend API
 
-A RESTful e-commerce backend built with Java and Spring Boot. The project provides APIs for product management, authentication, shopping carts, and order processing.
+A RESTful e-commerce backend built with **Java 21, Spring Boot 4, PostgreSQL, and Spring Security**.
+
+The application supports product and category management, JWT-based authentication, shopping carts, order processing, and inventory control. It also demonstrates Redis caching, transactional operations, pessimistic locking, and automated testing.
 
 ## Tech Stack
 
-- Java 21
-- Spring Boot 4
-- Spring Security and JWT
-- Spring Data JPA and Hibernate
-- PostgreSQL
-- Maven
-- Docker and Docker Compose
-- JUnit and Mockito
-- GitHub Actions
+- **Backend:** Java 21, Spring Boot 4, Spring Web MVC
+- **Security:** Spring Security, JWT
+- **Database:** PostgreSQL, Spring Data JPA, Hibernate
+- **Caching:** Redis, Spring Cache
+- **API Documentation:** Swagger UI, OpenAPI
+- **Build Tools:** Maven
+- **Testing:** JUnit 5, Mockito, Spring Boot Test
+- **DevOps:** Docker, Docker Compose, GitHub Actions
 
 ## Features
 
@@ -20,25 +21,48 @@ A RESTful e-commerce backend built with Java and Spring Boot. The project provid
 - User registration and login
 - JWT-based authentication
 - Role-based access control for ADMIN and USER
+- Protected REST API endpoints
 
 ### Product and Category Management
 - Create and manage product categories
-- Product management
+- Product CRUD operations
 - Product search, filtering, sorting, and pagination
 - Request validation and centralized exception handling
 
-### Shopping Cart and Orders
-- Add products to a shopping cart
-- Manage cart items
-- Checkout and create orders
-- Track order status
-- Cancel orders and restore product stock
-- Pessimistic locking for product stock updates
+### Redis Caching
+- Redis caching for product detail retrieval
+- Cache expiration with a 10-minute TTL
+- Automatic cache eviction when products are updated or deleted
+- Reduced repeated database queries for cached product details
 
-### Testing and CI
+### Shopping Cart and Order Management
+- Add products to shopping carts
+- Manage cart items
+- Checkout and create orders with order items
+- Calculate order totals
+- Track and update order status
+- Cancel pending orders and restore product stock
+- Transactional checkout operations using `@Transactional`
+- Pessimistic locking to prevent concurrent overselling
+
+### API Documentation
+- Interactive API documentation with Swagger UI
+- OpenAPI specification
+- JWT Bearer authentication support in Swagger UI
+
+### Testing
 - Unit tests for service-layer business logic
-- Automated build and test execution with GitHub Actions
-- Docker image build verification in CI
+- Integration tests for successful checkout
+- Integration tests for insufficient-stock scenarios
+- Concurrent checkout testing to prevent overselling
+- Transaction rollback testing after database writes
+- Automated test execution using Maven
+
+### Continuous Integration
+- GitHub Actions workflow triggered by pushes and pull requests to `main`
+- Automated build and test execution using Java 21
+- PostgreSQL and Redis services for integration testing
+- Docker image build verification
 
 ## Architecture
 
@@ -46,14 +70,20 @@ The application follows a layered architecture:
 
 `Client → Controller → Service → Repository → PostgreSQL`
 
-DTOs handle API requests and responses, while Spring Data JPA and Hibernate manage database persistence.
+Redis provides caching for selected product operations.
+
+- **Controller:** Handles HTTP requests and responses
+- **Service:** Implements business logic and transaction management
+- **Repository:** Handles database access through Spring Data JPA
+- **DTO:** Defines request and response data structures
+- **Security:** Handles JWT authentication and authorization
 
 ## Prerequisites
 
 - Docker Desktop
 - Docker Compose
 
-For local development without Docker, install Java 21, Maven, and PostgreSQL.
+For development without Docker, install Java 21, Maven, PostgreSQL, and Redis.
 
 ## Run with Docker Compose
 
@@ -64,15 +94,15 @@ git clone https://github.com/Brian2502/ecommerce-spring-boot.git
 cd ecommerce-spring-boot
 ```
 
-### 2. Create your environment file
+### 2. Create the environment file
 
-On Windows PowerShell:
+Windows PowerShell:
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-On macOS/Linux:
+macOS/Linux:
 
 ```bash
 cp .env.example .env
@@ -80,15 +110,19 @@ cp .env.example .env
 
 ### 3. Configure environment variables
 
-Edit `.env` and set a secure database password:
+Edit `.env` using the variable names defined in `.env.example`.
+
+For example:
 
 ```dotenv
 DB_PASSWORD=your_local_database_password
 ```
 
-Use the environment variable names defined in `.env.example`. Keep `.env` private and never commit real credentials.
+Configure any additional required variables, including JWT settings, according to your application configuration.
 
-### 4. Build and start the application
+Never commit real passwords, JWT secrets, or other credentials.
+
+### 4. Start the application
 
 ```bash
 docker compose up -d --build
@@ -100,7 +134,7 @@ docker compose up -d --build
 docker compose ps
 ```
 
-The backend listens on port `8081`. The PostgreSQL container is exposed on host port `5433`.
+The backend is configured to listen on port `8081`.
 
 To view application logs:
 
@@ -114,17 +148,51 @@ To stop the containers:
 docker compose down
 ```
 
-PostgreSQL data is stored in a Docker volume and can persist when containers are stopped or recreated. Do not use `docker compose down -v` unless you intentionally want to remove the volume and its data.
+PostgreSQL data can persist in a Docker volume. Avoid using `docker compose down -v` unless you intentionally want to remove stored data.
 
-## Configuration
+**Note:** The Docker Compose configuration must include or provide access to a Redis instance for caching to work.
 
-Database settings are supplied through environment variables. See `.env.example` for the required configuration.
+## Local Development
 
-Never commit database passwords, JWT secrets, or other credentials.
+Start PostgreSQL and Redis, then configure the application to connect to them.
+
+For the current local Redis setup:
+
+```yaml
+spring:
+  data:
+    redis:
+      host: localhost
+      port: 6380
+```
+
+Run the Spring Boot application from IntelliJ IDEA or with Maven:
+
+```powershell
+.\mvnw.cmd spring-boot:run
+```
+
+The application will be available at:
+
+`http://localhost:8081`
+
+## API Documentation
+
+Once the application is running, open:
+
+**Swagger UI**
+
+http://localhost:8081/swagger-ui/index.html
+
+**OpenAPI Specification**
+
+http://localhost:8081/v3/api-docs
+
+To test protected endpoints, log in to obtain a JWT and use the **Authorize** button in Swagger UI.
 
 ## Testing
 
-Run the test suite using the Maven Wrapper on Windows:
+Run all tests on Windows:
 
 ```powershell
 .\mvnw.cmd test
@@ -136,9 +204,29 @@ On macOS/Linux:
 ./mvnw test
 ```
 
+Run individual integration tests:
+
+```powershell
+.\mvnw.cmd "-Dtest=OrderCheckoutIntegrationTest" test
+.\mvnw.cmd "-Dtest=OrderConcurrencyTest" test
+.\mvnw.cmd "-Dtest=OrderRollbackIntegrationTest" test
+.\mvnw.cmd "-Dtest=TransactionRollbackIntegrationTest" test
+```
+
+### Integration Test Scenarios
+
+| Test | Purpose |
+|---|---|
+| OrderCheckoutIntegrationTest | Verifies order creation, order items, stock updates, and cart cleanup |
+| OrderConcurrencyTest | Verifies that concurrent checkouts do not oversell inventory |
+| OrderRollbackIntegrationTest | Verifies that insufficient stock prevents checkout without changing data |
+| TransactionRollbackIntegrationTest | Verifies transaction rollback after database writes and a runtime exception |
+
+The transaction rollback test uses `TransactionTemplate` to verify rollback behavior independently of the checkout service.
+
 ## API Overview
 
-The backend includes API areas for:
+The backend provides REST API endpoints for:
 
 - Authentication
 - Users
@@ -147,11 +235,18 @@ The backend includes API areas for:
 - Shopping carts
 - Orders
 
-Use an API client such as Postman to send requests to the running backend. Protected endpoints require a valid JWT.
+Protected endpoints require a valid JWT.
 
 ## Future Improvements
 
-- API documentation with OpenAPI/Swagger
-- Additional integration tests
-- Production-oriented deployment configuration
-- Expand automated test coverage
+- Expand integration and API test coverage
+- Improve multi-product checkout locking to reduce deadlock risks
+- Add production-oriented deployment configuration
+- Introduce monitoring and structured logging
+- Explore asynchronous order processing with RabbitMQ
+
+## Author
+
+**Ha Hoang Uy Vu**
+
+GitHub: https://github.com/Brian2502

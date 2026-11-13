@@ -13,10 +13,15 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.Cache;
+
 @RestController
 @RequestMapping("/api/products")
 @RequiredArgsConstructor
 public class ProductController {
+
+    private final CacheManager cacheManager;
 
     private final ProductService productService;
 
