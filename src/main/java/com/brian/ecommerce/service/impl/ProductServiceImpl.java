@@ -47,6 +47,7 @@ public class ProductServiceImpl implements ProductService {
 
         product.setName(request.getName());
         product.setDescription(request.getDescription());
+        product.setImageUrl(request.getImageUrl());
         product.setPrice(request.getPrice());
         product.setStock(request.getStock());
         product.setCategory(category);
@@ -95,6 +96,7 @@ public class ProductServiceImpl implements ProductService {
 
         existingProduct.setName(request.getName());
         existingProduct.setDescription(request.getDescription());
+        existingProduct.setImageUrl(request.getImageUrl());
         existingProduct.setPrice(request.getPrice());
         existingProduct.setStock(request.getStock());
         existingProduct.setCategory(category);
@@ -118,6 +120,7 @@ public class ProductServiceImpl implements ProductService {
         productRepository.delete(product);
     }
 
+
     private ProductResponse toResponse(Product product) {
 
         Category category = product.getCategory();
@@ -126,6 +129,7 @@ public class ProductServiceImpl implements ProductService {
                 product.getId(),
                 product.getName(),
                 product.getDescription(),
+                product.getImageUrl(),
                 product.getPrice(),
                 product.getStock(),
                 category.getId(),
@@ -134,6 +138,7 @@ public class ProductServiceImpl implements ProductService {
                 product.getUpdatedAt()
         );
     }
+
 
     @Override
     @Transactional(readOnly = true)
@@ -200,19 +205,7 @@ public class ProductServiceImpl implements ProductService {
                     productRepository.findAllWithCategory(pageable);
         }
 
-        return products.map(product ->
-                new ProductResponse(
-                        product.getId(),
-                        product.getName(),
-                        product.getDescription(),
-                        product.getPrice(),
-                        product.getStock(),
-                        product.getCategory().getId(),
-                        product.getCategory().getName(),
-                        product.getCreatedAt(),
-                        product.getUpdatedAt()
-                )
-        );
+        return products.map(this::toResponse);
     }
 
 }

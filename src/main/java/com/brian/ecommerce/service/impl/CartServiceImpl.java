@@ -18,6 +18,7 @@ import com.brian.ecommerce.dto.CartItemResponse;
 import com.brian.ecommerce.dto.CartItemUpdateRequest;
 import java.math.BigDecimal;
 import java.util.List;
+import org.springframework.transaction.annotation.Transactional;
 @Service
 public class CartServiceImpl implements CartService {
 
@@ -39,6 +40,7 @@ public class CartServiceImpl implements CartService {
     }
 
     @Override
+    @Transactional
     public void addToCart(String email, CartItemRequest request) {
 
         User user = userRepository.findByEmail(email)
@@ -100,20 +102,32 @@ public class CartServiceImpl implements CartService {
         }
     }
     @Override
+    @Transactional(readOnly = true)
     public CartResponse getCart(String email) {
 
+        // 1. Tìm người dùng
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() ->
                         new RuntimeException(
                                 "User not found with email: " + email
                         ));
 
-        Cart cart = cartRepository.findByUserId(user.getId())
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "Cart not found for user: " + user.getId()
-                        ));
+        // 2. Tìm giỏ hàng
+        Optional<Cart> cartOptional =
+                cartRepository.findByUserId(user.getId());
 
+        // 3. Nếu chưa có giỏ hàng, trả về giỏ hàng rỗng
+        if (cartOptional.isEmpty()) {
+            return new CartResponse(
+                    null,
+                    List.of(),
+                    BigDecimal.ZERO
+            );
+        }
+
+        Cart cart = cartOptional.get();
+
+        // 4. Lấy danh sách sản phẩm
         List<CartItem> cartItems =
                 cartItemRepository.findByCart(cart);
 
@@ -122,13 +136,10 @@ public class CartServiceImpl implements CartService {
 
                     Product product = item.getProduct();
 
-                    BigDecimal subtotal =
-                            product.getPrice()
-                                    .multiply(
-                                            BigDecimal.valueOf(
-                                                    item.getQuantity()
-                                            )
-                                    );
+                    BigDecimal subtotal = product.getPrice()
+                            .multiply(
+                                    BigDecimal.valueOf(item.getQuantity())
+                            );
 
                     return new CartItemResponse(
                             product.getId(),
@@ -140,10 +151,12 @@ public class CartServiceImpl implements CartService {
                 })
                 .toList();
 
+        // 5. Tính tổng tiền
         BigDecimal totalPrice = items.stream()
                 .map(CartItemResponse::subtotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
+        // 6. Trả về giỏ hàng
         return new CartResponse(
                 cart.getId(),
                 items,
@@ -152,6 +165,7 @@ public class CartServiceImpl implements CartService {
     }
 
     @Override
+    @Transactional
     public void updateCartItem(
             String email,
             Long productId,
@@ -190,6 +204,7 @@ public class CartServiceImpl implements CartService {
     }
 
     @Override
+    @Transactional
     public void removeFromCart(String email, Long productId) {
 
         User user = userRepository.findByEmail(email)

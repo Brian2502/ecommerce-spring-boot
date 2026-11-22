@@ -1,0 +1,53 @@
+:root {
+  font-family: Inter, Arial, sans-serif;
+  color: #131921;
+  background: #ffffff;
+  font-synthesis: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: #ffffff;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+a {
+  color: inherit;
+}
+
+.main-content {
+  width: min(100% - 48px, 1440px);
+  margin: 0 auto;
+  padding: 32px 0;
+}
+
+@media (max-width: 768px) {
+  .main-content {
+    width: calc(100% - 32px);
+    padding: 20px 0;
+  }
+}

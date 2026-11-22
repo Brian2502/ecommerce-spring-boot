@@ -1,3 +1,4 @@
+
 package com.brian.ecommerce.dto;
 
 import lombok.AllArgsConstructor;
@@ -15,6 +16,8 @@ public class ProductResponse {
     private String name;
 
     private String description;
+
+    private String imageUrl;
 
     private BigDecimal price;
 

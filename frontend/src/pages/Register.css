@@ -1,0 +1,96 @@
+
+/* Register page */
+
+.uv-register .uv-login-shell {
+    min-height: 750px;
+}
+
+.uv-register .uv-brand-logo {
+    color: #fff;
+    text-decoration: none;
+}
+
+.uv-register .uv-brand-content h1 {
+    font-size: clamp(34px, 3.5vw, 50px);
+}
+
+.uv-register-benefits {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-top: 34px;
+}
+
+.uv-register-benefits > div {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    color: #d6dce5;
+    font-size: 13px;
+}
+
+.uv-register-benefits svg {
+    color: #ff9900;
+    flex-shrink: 0;
+}
+
+.uv-register .uv-login-panel {
+    padding-top: 30px;
+    padding-bottom: 25px;
+}
+
+.uv-register .uv-login-content {
+    padding: 25px 0;
+}
+
+.uv-register .uv-login-heading p {
+    margin-bottom: 25px;
+}
+
+.uv-register .uv-field {
+    margin-bottom: 17px;
+}
+
+.uv-register .uv-login-submit {
+    margin-top: 22px;
+}
+
+.uv-register .uv-login-register {
+    margin-top: 22px;
+}
+
+/* Tablet */
+
+@media (max-width: 850px) {
+    .uv-register .uv-login-shell {
+        min-height: auto;
+    }
+
+    .uv-register .uv-brand-content h1 {
+        font-size: 30px;
+    }
+
+    .uv-register-benefits {
+        display: none;
+    }
+
+    .uv-register .uv-login-content {
+        padding: 35px 0;
+    }
+}
+
+/* Mobile */
+
+@media (max-width: 480px) {
+    .uv-register .uv-login-panel {
+        padding: 24px 22px;
+    }
+
+    .uv-register .uv-login-content {
+        padding: 30px 0;
+    }
+
+    .uv-register .uv-login-heading h2 {
+        font-size: 28px;
+    }
+}

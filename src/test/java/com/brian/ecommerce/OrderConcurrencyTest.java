@@ -26,7 +26,10 @@ import java.util.concurrent.TimeUnit;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import org.springframework.test.context.ActiveProfiles;
+
 @SpringBootTest
+@ActiveProfiles("test")
 class OrderConcurrencyTest {
 
     @Autowired
@@ -250,4 +253,106 @@ class OrderConcurrencyTest {
                 orderCount
         );
     }
+
+
+    @Test
+    void shouldPreventDuplicateCheckoutForSameUser()
+            throws Exception {
+
+        String suffix = java.util.UUID.randomUUID().toString();
+
+        // 1. Category
+        Category category = new Category();
+        category.setName("Same User Test " + suffix);
+        category.setDescription("Test");
+        category = categoryRepository.save(category);
+
+        // 2. Product stock = 10
+        Product product = new Product();
+        product.setName("Same User Product " + suffix);
+        product.setDescription("Test");
+        product.setPrice(BigDecimal.valueOf(1000));
+        product.setStock(10);
+        product.setCategory(category);
+        product = productRepository.save(product);
+
+        Long productId = product.getId();
+
+        // 3. User
+        User user = new User();
+        user.setName("Same User");
+        user.setEmail("same-user-" + suffix + "@gmail.com");
+        user.setPassword("password");
+        user.setRole("USER");
+        user = userRepository.save(user);
+
+        String email = user.getEmail();
+        Long userId = user.getId();
+
+        // 4. Cart
+        Cart cart = new Cart();
+        cart.setUser(user);
+        cart = cartRepository.save(cart);
+
+        // 5. CartItem: quantity = 2
+        CartItem item = new CartItem();
+        item.setCart(cart);
+        item.setProduct(product);
+        item.setQuantity(2);
+        cartItemRepository.save(item);
+
+        // 6. Hai request Checkout đồng thời
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        CountDownLatch startLatch = new CountDownLatch(1);
+
+        try {
+            java.util.concurrent.Callable<Boolean> checkoutTask = () -> {
+                startLatch.await();
+
+                try {
+                    orderService.checkout(email);
+                    return true;
+                } catch (RuntimeException ex) {
+                    return false;
+                }
+            };
+
+            Future<Boolean> resultA = executor.submit(checkoutTask);
+            Future<Boolean> resultB = executor.submit(checkoutTask);
+
+            startLatch.countDown();
+
+            boolean successA = resultA.get(15, TimeUnit.SECONDS);
+            boolean successB = resultB.get(15, TimeUnit.SECONDS);
+
+            // Chỉ một Checkout thành công
+            assertTrue(
+                    successA ^ successB,
+                    "Exactly one checkout should succeed"
+            );
+
+            // Chỉ tạo một Order
+            assertEquals(
+                    1,
+                    orderRepository.findByUserId(userId).size()
+            );
+
+            // Stock: 10 - 2 = 8
+            assertEquals(
+                    8,
+                    productRepository.findById(productId)
+                            .orElseThrow()
+                            .getStock()
+            );
+
+            // Cart đã trống
+            assertTrue(
+                    cartItemRepository.findByCart(cart).isEmpty()
+            );
+
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
 }

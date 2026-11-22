@@ -63,7 +63,7 @@ public class OrderServiceImpl implements OrderService {
                                 "User not found with email: " + email
                         ));
 
-        Cart cart = cartRepository.findByUserId(user.getId())
+        Cart cart = cartRepository.findByUserIdForUpdate(user.getId())
                 .orElseThrow(() ->
                         new RuntimeException(
                                 "Cart not found for user: " + user.getId()
@@ -71,6 +71,12 @@ public class OrderServiceImpl implements OrderService {
 
         List<CartItem> cartItems =
                 cartItemRepository.findByCart(cart);
+
+        cartItems.sort(
+                java.util.Comparator.comparing(
+                        item -> item.getProduct().getId()
+                )
+        );
 
         if (cartItems.isEmpty()) {
             throw new RuntimeException("Cart is empty");
@@ -230,13 +236,14 @@ public class OrderServiceImpl implements OrderService {
         );
     }
 
+
     @Override
     @Transactional
     public void updateOrderStatus(Long orderId, OrderStatus status) {
 
-        Order order = orderRepository.findById(orderId)
+        Order order = orderRepository.findByIdForUpdate(orderId)
                 .orElseThrow(() ->
-                        new RuntimeException(
+                        new OrderNotFoundException(
                                 "Order not found with id: " + orderId
                         ));
 
@@ -244,12 +251,9 @@ public class OrderServiceImpl implements OrderService {
 
         boolean validTransition =
                 (currentStatus == OrderStatus.PENDING
-                        && (status == OrderStatus.CONFIRMED
-                        || status == OrderStatus.CANCELLED))
-
+                        && status == OrderStatus.CONFIRMED)
                         || (currentStatus == OrderStatus.CONFIRMED
                         && status == OrderStatus.SHIPPED)
-
                         || (currentStatus == OrderStatus.SHIPPED
                         && status == OrderStatus.DELIVERED);
 
@@ -265,6 +269,7 @@ public class OrderServiceImpl implements OrderService {
         order.setStatus(status);
     }
 
+
     @Override
     @Transactional
     public void cancelOrder(Long orderId, String email) {
@@ -275,7 +280,7 @@ public class OrderServiceImpl implements OrderService {
                                 "User not found with email: " + email
                         ));
 
-        Order order = orderRepository.findById(orderId)
+        Order order = orderRepository.findByIdForUpdate(orderId)
                 .orElseThrow(() ->
                         new OrderNotFoundException(
                                 "Order not found with id: " + orderId
@@ -293,18 +298,40 @@ public class OrderServiceImpl implements OrderService {
             );
         }
 
+
         List<OrderItem> orderItems =
                 orderItemRepository.findByOrderId(orderId);
 
-        for (OrderItem orderItem : orderItems) {
+        List<Long> productIds = orderItems.stream()
+                .map(item -> item.getProduct().getId())
+                .distinct()
+                .sorted()
+                .toList();
 
-            Product product = orderItem.getProduct();
+        Map<Long, Product> lockedProducts = new HashMap<>();
+
+        for (Long productId : productIds) {
+            Product product = productRepository
+                    .findByIdForUpdate(productId)
+                    .orElseThrow(() ->
+                            new RuntimeException(
+                                    "Product not found: " + productId
+                            ));
+
+            lockedProducts.put(productId, product);
+        }
+
+        for (OrderItem item : orderItems) {
+            Product product = lockedProducts.get(
+                    item.getProduct().getId()
+            );
 
             product.setStock(
-                    product.getStock() + orderItem.getQuantity()
+                    product.getStock() + item.getQuantity()
             );
         }
 
         order.setStatus(OrderStatus.CANCELLED);
+
     }
 }

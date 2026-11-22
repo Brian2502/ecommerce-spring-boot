@@ -49,23 +49,99 @@ public class SecurityConfig {
 
         http
                 .csrf(csrf -> csrf.disable())
+
                 .authorizeHttpRequests(auth -> auth
+
+                        // Swagger
                         .requestMatchers(
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
                                 "/v3/api-docs/**"
                         ).permitAll()
-                        .requestMatchers("/api/users/**").permitAll()
-                        .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers(HttpMethod.DELETE, "/api/categories/**")
-                        .hasRole("ADMIN")
+
+                        // Authentication & registration
+                        .requestMatchers(HttpMethod.POST, "/api/users")
+                        .permitAll()
+
+                        .requestMatchers("/api/auth/**")
+                        .permitAll()
+
+                        // Public: xem sản phẩm, danh mục và thông số
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/products",
+                                "/api/products/**",
+                                "/api/categories",
+                                "/api/categories/**",
+                                "/api/attribute-groups"
+                        ).permitAll()
+
+                        // ADMIN: quản lý sản phẩm
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/products"
+                        ).hasRole("ADMIN")
+
+                        .requestMatchers(
+                                HttpMethod.PUT,
+                                "/api/products/**"
+                        ).hasRole("ADMIN")
+
+                        .requestMatchers(
+                                HttpMethod.DELETE,
+                                "/api/products/**"
+                        ).hasRole("ADMIN")
+
+                        // ADMIN: quản lý danh mục
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/categories"
+                        ).hasRole("ADMIN")
+
+                        .requestMatchers(
+                                HttpMethod.PUT,
+                                "/api/categories/**"
+                        ).hasRole("ADMIN")
+
+                        .requestMatchers(
+                                HttpMethod.DELETE,
+                                "/api/categories/**"
+                        ).hasRole("ADMIN")
+
+                        // ADMIN: quản lý nhóm thuộc tính
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/attribute-groups"
+                        ).hasRole("ADMIN")
+
+                        // ADMIN: xem danh sách thuộc tính
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/attributes"
+                        ).hasRole("ADMIN")
+
+                        // ADMIN: tạo thuộc tính
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/attributes"
+                        ).hasRole("ADMIN")
+
+                        // ADMIN: gán/cập nhật thuộc tính sản phẩm
+                        .requestMatchers(
+                                HttpMethod.PUT,
+                                "/api/products/*/attributes/*"
+                        ).hasRole("ADMIN")
+
+                        // ADMIN: cập nhật trạng thái đơn hàng
                         .requestMatchers(
                                 HttpMethod.PUT,
                                 "/api/orders/*/status"
-                        )
-                        .hasRole("ADMIN")
+                        ).hasRole("ADMIN")
+
+                        // Các API còn lại yêu cầu đăng nhập
                         .anyRequest().authenticated()
                 )
+
                 .addFilterBefore(
                         jwtAuthenticationFilter,
                         UsernamePasswordAuthenticationFilter.class

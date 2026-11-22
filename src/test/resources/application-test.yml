@@ -1,0 +1,18 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/ecommerce_test
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${DB_PASSWORD}
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+
+  cache:
+    type: none
+
+logging:
+  level:
+    org.springframework.security: WARN
+    org.springframework.cache.interceptor: WARN

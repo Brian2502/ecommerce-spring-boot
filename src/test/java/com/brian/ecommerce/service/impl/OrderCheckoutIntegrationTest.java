@@ -8,14 +8,36 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import org.springframework.test.context.ActiveProfiles;
+
 @SpringBootTest
+@ActiveProfiles("test")
 class OrderCheckoutIntegrationTest {
+
+    @Autowired
+    private javax.sql.DataSource dataSource;
+
+    @Test
+    void verifyTestDatabase() throws Exception {
+        try (var connection = dataSource.getConnection()) {
+            String url = connection.getMetaData().getURL();
+
+            System.out.println("TEST DATABASE URL: " + url);
+
+            assertTrue(
+                    url.endsWith("/ecommerce_test"),
+                    "Integration Test must use ecommerce_test, actual: " + url
+            );
+        }
+    }
 
     @Autowired private OrderService orderService;
     @Autowired private UserRepository userRepository;
@@ -25,6 +47,7 @@ class OrderCheckoutIntegrationTest {
     @Autowired private CartItemRepository cartItemRepository;
     @Autowired private OrderRepository orderRepository;
     @Autowired private OrderItemRepository orderItemRepository;
+
 
     @Test
     void shouldCheckoutSuccessfully() {

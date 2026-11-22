@@ -21,6 +21,12 @@ public class ProductRequest {
     @Size(max = 1000, message = "Product description must not exceed 1000 characters")
     private String description;
 
+    @Size(
+            max = 1000,
+            message = "Product image URL must not exceed 1000 characters"
+    )
+    private String imageUrl;
+
     @NotNull(message = "Product price is required")
     @DecimalMin(value = "0.0", inclusive = false, message = "Product price must be greater than 0")
     private BigDecimal price;

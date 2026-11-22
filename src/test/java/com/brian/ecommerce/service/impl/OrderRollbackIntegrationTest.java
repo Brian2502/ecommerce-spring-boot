@@ -14,7 +14,10 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import org.springframework.test.context.ActiveProfiles;
+
 @SpringBootTest
+@ActiveProfiles("test")
 class OrderRollbackIntegrationTest {
 
     @Autowired private OrderService orderService;
