@@ -18,13 +18,13 @@ jobs:
       postgres:
         image: postgres:18
         env:
-          POSTGRES_DB: ecommerce
+          POSTGRES_DB: ecommerce_test
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U postgres -d ecommerce"
+          --health-cmd "pg_isready -U postgres -d ecommerce_test"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -40,7 +40,9 @@ jobs:
           --health-retries 10
 
     env:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/ecommerce
+      SPRING_PROFILES_ACTIVE: test
+
+      SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/ecommerce_test
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
 
