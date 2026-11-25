@@ -12,6 +12,11 @@ spring:
   cache:
     type: none
 
+cloudinary:
+  cloud-name: test-cloud
+  api-key: test-api-key
+  api-secret: test-api-secret
+
 logging:
   level:
     org.springframework.security: WARN
