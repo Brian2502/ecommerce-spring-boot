@@ -28,6 +28,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.springframework.test.context.ActiveProfiles;
 
+import com.brian.ecommerce.entity.ProductVariant;
+import com.brian.ecommerce.repository.ProductVariantRepository;
+import java.util.UUID;
+import java.util.concurrent.Callable;
+
 @SpringBootTest
 @ActiveProfiles("test")
 class OrderConcurrencyTest {
@@ -52,6 +57,9 @@ class OrderConcurrencyTest {
 
     @Autowired
     private OrderRepository orderRepository;
+
+    @Autowired
+    private ProductVariantRepository variantRepository;
 
     @Test
     void shouldPreventOversellingWhenTwoUsersCheckoutAtSameTime()
@@ -354,5 +362,223 @@ class OrderConcurrencyTest {
             executor.shutdownNow();
         }
     }
+
+
+    @Test
+    void shouldPreventVariantOversellingWhenTwoUsersCheckoutAtSameTime()
+            throws Exception {
+
+        String suffix = UUID.randomUUID().toString();
+
+        // 1. Create category
+        Category category = new Category();
+        category.setName("Variant Concurrency " + suffix);
+        category.setDescription("Test");
+        category = categoryRepository.save(category);
+
+        // 2. Create base product
+        Product product = new Product();
+        product.setName("iPhone " + suffix);
+        product.setDescription("Variant concurrency test");
+        product.setPrice(BigDecimal.valueOf(20000000));
+        product.setStock(100);
+        product.setCategory(category);
+        product = productRepository.save(product);
+
+        Long productId = product.getId();
+
+        // 3. Create variant: stock = 5
+        ProductVariant variant = new ProductVariant();
+        variant.setProduct(product);
+        variant.setSku("CONC-" + suffix);
+        variant.setColor("Black");
+        variant.setStorage("128GB");
+        variant.setPrice(BigDecimal.valueOf(22000000));
+        variant.setStock(5);
+        variant = variantRepository.save(variant);
+
+        Long variantId = variant.getId();
+
+        // 4. Create user A
+        User userA = new User();
+        userA.setName("Variant User A");
+        userA.setEmail("variant-a-" + suffix + "@gmail.com");
+        userA.setPassword("password");
+        userA.setRole("USER");
+        userA = userRepository.save(userA);
+
+        String emailA = userA.getEmail();
+        Long userAId = userA.getId();
+
+        // 5. Create user B
+        User userB = new User();
+        userB.setName("Variant User B");
+        userB.setEmail("variant-b-" + suffix + "@gmail.com");
+        userB.setPassword("password");
+        userB.setRole("USER");
+        userB = userRepository.save(userB);
+
+        String emailB = userB.getEmail();
+        Long userBId = userB.getId();
+
+        // 6. Create cart A
+        Cart cartA = new Cart();
+        cartA.setUser(userA);
+        cartA = cartRepository.save(cartA);
+
+        // 7. Create cart B
+        Cart cartB = new Cart();
+        cartB.setUser(userB);
+        cartB = cartRepository.save(cartB);
+
+        // 8. User A wants 4 units
+        CartItem itemA = new CartItem();
+        itemA.setCart(cartA);
+        itemA.setProduct(product);
+        itemA.setVariant(variant);
+        itemA.setQuantity(4);
+        cartItemRepository.save(itemA);
+
+        // 9. User B wants 4 units
+        CartItem itemB = new CartItem();
+        itemB.setCart(cartB);
+        itemB.setProduct(product);
+        itemB.setVariant(variant);
+        itemB.setQuantity(4);
+        cartItemRepository.save(itemB);
+
+        // 10. Prepare concurrent checkout
+        ExecutorService executor =
+                Executors.newFixedThreadPool(2);
+
+        CountDownLatch readyLatch =
+                new CountDownLatch(2);
+
+        CountDownLatch startLatch =
+                new CountDownLatch(1);
+
+        try {
+            Callable<Boolean> checkoutA = () -> {
+                readyLatch.countDown();
+                startLatch.await();
+
+                try {
+                    orderService.checkout(emailA);
+                    return true;
+
+                } catch (RuntimeException ex) {
+                    if (ex.getMessage() != null
+                            && ex.getMessage().contains("Not enough stock")) {
+                        return false;
+                    }
+
+                    throw ex;
+                }
+            };
+
+            Callable<Boolean> checkoutB = () -> {
+                readyLatch.countDown();
+                startLatch.await();
+
+                try {
+                    orderService.checkout(emailB);
+                    return true;
+
+                } catch (RuntimeException ex) {
+                    if (ex.getMessage() != null
+                            && ex.getMessage().contains("Not enough stock")) {
+                        return false;
+                    }
+
+                    throw ex;
+                }
+            };
+
+            Future<Boolean> resultA =
+                    executor.submit(checkoutA);
+
+            Future<Boolean> resultB =
+                    executor.submit(checkoutB);
+
+            // 11. Wait until both threads are ready
+            assertTrue(
+                    readyLatch.await(5, TimeUnit.SECONDS),
+                    "Both checkout tasks must be ready"
+            );
+
+            // 12. Start both requests
+            startLatch.countDown();
+
+            boolean successA =
+                    resultA.get(15, TimeUnit.SECONDS);
+
+            boolean successB =
+                    resultB.get(15, TimeUnit.SECONDS);
+
+            // 13. Exactly one checkout succeeds
+            assertTrue(
+                    successA ^ successB,
+                    "Exactly one checkout should succeed"
+            );
+
+            // 14. Variant stock: 5 - 4 = 1
+            assertEquals(
+                    1,
+                    variantRepository.findById(variantId)
+                            .orElseThrow()
+                            .getStock(),
+                    "Variant stock must be exactly 1"
+            );
+
+            // 15. Base product stock remains unchanged
+            assertEquals(
+                    100,
+                    productRepository.findById(productId)
+                            .orElseThrow()
+                            .getStock()
+            );
+
+            // 16. Verify order count for each user
+            assertEquals(
+                    successA ? 1 : 0,
+                    orderRepository.findByUserId(userAId).size()
+            );
+
+            assertEquals(
+                    successB ? 1 : 0,
+                    orderRepository.findByUserId(userBId).size()
+            );
+
+            // 17. Identify successful and failed carts
+            Cart successfulCart = successA ? cartA : cartB;
+            Cart failedCart = successA ? cartB : cartA;
+
+            // 18. Successful cart must be empty
+            assertTrue(
+                    cartItemRepository.findByCart(successfulCart)
+                            .isEmpty()
+            );
+
+            // 19. Failed cart must remain unchanged
+            var remainingItems =
+                    cartItemRepository.findByCart(failedCart);
+
+            assertEquals(1, remainingItems.size());
+
+            CartItem remainingItem = remainingItems.get(0);
+
+            assertEquals(4, remainingItem.getQuantity());
+
+            assertEquals(
+                    variantId,
+                    remainingItem.getVariant().getId()
+            );
+
+        } finally {
+            startLatch.countDown();
+            executor.shutdownNow();
+        }
+    }
+
 
 }

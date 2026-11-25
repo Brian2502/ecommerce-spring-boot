@@ -22,17 +22,21 @@ public class AttributeService {
     private final AttributeRepository attributeRepository;
     private final ProductAttributeValueRepository valueRepository;
     private final ProductRepository productRepository;
+    private final CategoryAttributeRepository categoryAttributeRepository;
+
 
     public AttributeService(
             AttributeGroupRepository groupRepository,
             AttributeRepository attributeRepository,
             ProductAttributeValueRepository valueRepository,
-            ProductRepository productRepository
+            ProductRepository productRepository,
+            CategoryAttributeRepository categoryAttributeRepository
     ) {
         this.groupRepository = groupRepository;
         this.attributeRepository = attributeRepository;
         this.valueRepository = valueRepository;
         this.productRepository = productRepository;
+        this.categoryAttributeRepository = categoryAttributeRepository;
     }
 
     @Transactional
@@ -88,32 +92,58 @@ public class AttributeService {
         return attributeRepository.save(attribute);
     }
 
+
     @Transactional
     public void setProductAttribute(
             Long productId,
             Long attributeId,
             AttributeValueRequest request
     ) {
+        // 1. Kiểm tra sản phẩm tồn tại
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Product not found"
+                        HttpStatus.NOT_FOUND,
+                        "Product not found"
                 ));
 
+        // 2. Kiểm tra thuộc tính tồn tại
         Attribute attribute = attributeRepository.findById(attributeId)
                 .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Attribute not found"
+                        HttpStatus.NOT_FOUND,
+                        "Attribute not found"
                 ));
 
+        // 3. Xác định danh mục của sản phẩm
+        Long categoryId = product.getCategory().getId();
+
+        // 4. Kiểm tra thuộc tính có thuộc danh mục không
+        boolean allowed = categoryAttributeRepository
+                .existsByCategoryIdAndAttributeId(
+                        categoryId,
+                        attributeId
+                );
+
+        if (!allowed) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Attribute does not belong to product category"
+            );
+        }
+
+        // 5. Tìm giá trị đã lưu hoặc tạo mới
         ProductAttributeValue value = valueRepository
                 .findByProductIdAndAttributeId(productId, attributeId)
                 .orElseGet(ProductAttributeValue::new);
 
+        // 6. Cập nhật thông số
         value.setProduct(product);
         value.setAttribute(attribute);
         value.setValue(request.value().trim());
 
+        // 7. Lưu vào database
         valueRepository.save(value);
     }
+
 
     @Transactional(readOnly = true)
     public List<SpecificationResponse> getSpecifications(Long productId) {
@@ -123,8 +153,23 @@ public class AttributeService {
             );
         }
 
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Product not found"
+                ));
+
+        Long categoryId = product.getCategory().getId();
+
         List<ProductAttributeValue> values =
-                valueRepository.findSpecifications(productId);
+                valueRepository.findSpecifications(productId)
+                        .stream()
+                        .filter(value -> categoryAttributeRepository
+                                .existsByCategoryIdAndAttributeId(
+                                        categoryId,
+                                        value.getAttribute().getId()
+                                ))
+                        .toList();
 
         Map<Long, List<SpecificationResponse.SpecificationItem>> grouped =
                 new LinkedHashMap<>();

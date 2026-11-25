@@ -2,20 +2,44 @@
 import "./ProductCard.css";
 import { Link } from "react-router-dom";
 
+const FALLBACK_IMAGE =
+    "https://placehold.co/400x400?text=UVMart";
+
 function ProductCard({ product, onAddToCart }) {
-    const isOutOfStock = product.stock <= 0;
 
     const imageUrl =
-        product.image ||
-        "https://placehold.co/400x400?text=UVMart";
+        product.imageUrl || FALLBACK_IMAGE;
+
+    const hasVariants = product.hasVariants === true;
+
+    const displayPrice = hasVariants
+        ? product.minVariantPrice
+        : product.price;
+
+    const displayStock = hasVariants
+        ? product.totalVariantStock
+        : product.stock;
+
+    const isOutOfStock = displayStock <= 0;
 
     return (
         <div className="product-card">
+
             <Link to={`/products/${product.id}`}>
-                <img src={imageUrl} alt={product.name} />
+                <img
+                    src={imageUrl}
+                    alt={product.name}
+                    loading="lazy"
+                    onError={(e) => {
+                        if (e.currentTarget.src !== FALLBACK_IMAGE) {
+                            e.currentTarget.src = FALLBACK_IMAGE;
+                        }
+                    }}
+                />
             </Link>
 
             <div className="product-info">
+
                 <p className="product-category">
                     {product.categoryName}
                 </p>
@@ -30,21 +54,49 @@ function ProductCard({ product, onAddToCart }) {
                 </h3>
 
                 <p className="product-price">
-                    {Number(product.price).toLocaleString("vi-VN")} ₫
+                    {hasVariants && (
+                        <span className="product-price-prefix">
+                            Từ{" "}
+                        </span>
+                    )}
+
+                    {Number(displayPrice).toLocaleString("vi-VN")} ₫
                 </p>
 
-                <p>
-                    {isOutOfStock
-                        ? "Hết hàng"
-                        : `Còn ${product.stock} sản phẩm`}
-                </p>
+                <div className="product-availability">
+
+                    <p
+                        className={
+                            isOutOfStock
+                                ? "product-stock out-of-stock"
+                                : "product-stock in-stock"
+                        }
+                    >
+                        {isOutOfStock
+                            ? "Hết hàng"
+                            : `Còn ${displayStock} sản phẩm`}
+                    </p>
+
+                    {hasVariants && (
+                        <span className="product-variant-count">
+                            {product.variantCount} phiên bản
+                        </span>
+                    )}
+
+                </div>
 
                 <button
+                    type="button"
                     disabled={isOutOfStock}
                     onClick={() => onAddToCart(product)}
                 >
-                    {isOutOfStock ? "Hết hàng" : "Thêm vào giỏ hàng"}
+                    {isOutOfStock
+                        ? "Hết hàng"
+                        : hasVariants
+                            ? "Chọn phiên bản"
+                            : "Thêm vào giỏ hàng"}
                 </button>
+
             </div>
         </div>
     );

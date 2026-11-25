@@ -336,3 +336,9 @@
         text-align: right;
     }
 }
+.uv-cart-item-variant {
+    margin: 5px 0 8px;
+    font-size: 13px;
+    color: #64748b;
+}
+

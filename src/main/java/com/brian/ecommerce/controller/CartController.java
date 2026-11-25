@@ -50,11 +50,12 @@ public class CartController {
         return ResponseEntity.ok(response);
     }
 
-    @PutMapping("/items/{productId}")
-    public ResponseEntity<Void> updateCartItem(
-            @PathVariable Long productId,
-            @Valid @RequestBody CartItemUpdateRequest request) {
 
+    @PutMapping("/items/{cartItemId}")
+    public ResponseEntity<Void> updateCartItem(
+            @PathVariable("cartItemId") Long cartItemId,
+            @Valid @RequestBody CartItemUpdateRequest request
+    ) {
         Authentication authentication =
                 SecurityContextHolder.getContext().getAuthentication();
 
@@ -62,24 +63,27 @@ public class CartController {
 
         cartService.updateCartItem(
                 email,
-                productId,
+                cartItemId,
                 request
         );
 
         return ResponseEntity.ok().build();
     }
 
-    @DeleteMapping("/items/{productId}")
-    public ResponseEntity<Void> removeFromCart(
-            @PathVariable Long productId) {
 
+
+    @DeleteMapping("/items/{cartItemId}")
+    public ResponseEntity<Void> removeFromCart(
+            @PathVariable("cartItemId") Long cartItemId
+    ) {
         Authentication authentication =
                 SecurityContextHolder.getContext().getAuthentication();
 
         String email = authentication.getName();
 
-        cartService.removeFromCart(email, productId);
+        cartService.removeFromCart(email, cartItemId);
 
         return ResponseEntity.noContent().build();
     }
+
 }

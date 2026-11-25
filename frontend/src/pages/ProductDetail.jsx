@@ -25,6 +25,8 @@ function ProductDetail() {
     const { addToCart } = useCart();
 
     const [product, setProduct] = useState(null);
+    const [variants, setVariants] = useState([]);
+    const [selectedVariantId, setSelectedVariantId] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [specifications, setSpecifications] = useState([]);
@@ -101,12 +103,41 @@ function ProductDetail() {
 
         fetchSpecifications();
 
+        async function fetchVariants() {
+            try {
+                setVariants([]);
+                setSelectedVariantId(null);
+
+                const response = await api.get(
+                    `/products/${id}/variants`,
+                    { signal: controller.signal }
+                );
+
+                if (!controller.signal.aborted) {
+                    const data = response.data;
+                    setVariants(data);
+                    const defaultVariant =
+                        data.find((variant) => variant.stock > 0)
+                        ?? data[0];
+
+                    setSelectedVariantId(
+                        defaultVariant?.id ?? null
+                    );
+                }
+            } catch (err) {
+                if (controller.signal.aborted) return;
+                console.error("Failed to load variants:", err);
+            }
+        }
+
+        fetchVariants();
+
 
         return () => controller.abort();
     }, [id]);
 
     const handleAddToCart = async () => {
-        if (!product || product.stock <= 0 || adding) return;
+        if (!product || displayStock <= 0 || adding) return;
 
         if (!isAuthenticated) {
             navigate("/login");
@@ -118,7 +149,7 @@ function ProductDetail() {
         setCartSuccess(false);
 
         try {
-            await addToCart(product.id, quantity);
+            await addToCart(product.id, quantity, selectedVariant?.id ?? null);
 
             setCartSuccess(true);
             setCartMessage(
@@ -154,15 +185,28 @@ function ProductDetail() {
         );
     }
 
-    const isOutOfStock = product.stock <= 0;
 
-    const imageUrl =
+    const selectedVariant = variants.find(
+        (variant) => variant.id === selectedVariantId
+    );
+
+    const displayPrice = selectedVariant?.price ?? product.price;
+    const displayStock = selectedVariant?.stock ?? product.stock;
+
+    const isOutOfStock = displayStock <= 0;
+
+    const productImageUrl =
         product.imageUrl ||
         product.image ||
         "/images/product-placeholder.png";
 
+    const imageUrl =
+        selectedVariant?.imageUrl ||
+        productImageUrl;
+
     const formatPrice = (price) =>
         Number(price).toLocaleString("vi-VN") + " ₫";
+
 
     return (
         <main className="product-detail">
@@ -182,12 +226,31 @@ function ProductDetail() {
                 <div className="detail-gallery">
                     <div className="detail-image">
                         <img
+                            key={imageUrl}
                             src={imageUrl}
-                            alt={product.name}
+                            alt={
+                                selectedVariant
+                                    ? `${product.name} - ${selectedVariant.color} - ${selectedVariant.storage}`
+                                    : product.name
+                            }
                             onError={(e) => {
-                                e.currentTarget.onerror = null;
-                                e.currentTarget.src =
-                                    "/images/product-placeholder.png";
+                                const placeholder = "/images/product-placeholder.png";
+
+                                const fallbackUrl = new URL(
+                                    productImageUrl,
+                                    window.location.origin
+                                ).href;
+
+                                if (
+                                    e.currentTarget.src !== fallbackUrl &&
+                                    !e.currentTarget.src.endsWith(placeholder)
+                                ) {
+                                    e.currentTarget.src = productImageUrl;
+                                } else if (
+                                    !e.currentTarget.src.endsWith(placeholder)
+                                ) {
+                                    e.currentTarget.src = placeholder;
+                                }
                             }}
                         />
                     </div>
@@ -213,10 +276,40 @@ function ProductDetail() {
 
                     <div className="detail-price-box">
                         <p className="detail-price">
-                            {formatPrice(product.price)}
+                            {formatPrice(displayPrice)}
                         </p>
                         <span>Giá bán hiện tại</span>
                     </div>
+
+
+                    {variants.length > 0 && (
+                        <div className="detail-variants">
+                            <h3>Chọn phiên bản</h3>
+
+                            <div className="variant-options">
+                                {variants.map((variant) => (
+                                    <button
+                                        key={variant.id}
+                                        type="button"
+                                        className={`variant-option ${
+                                            selectedVariantId === variant.id
+                                                ? "active"
+                                                : ""
+                                        }`}
+                                        onClick={() => {
+                                            setSelectedVariantId(variant.id);
+                                            setQuantity(1);
+                                        }}
+                                    >
+                                        <strong>{variant.storage}</strong>
+                                        <span>{variant.color}</span>
+                                        <small>{formatPrice(variant.price)}</small>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
 
                     <div className="detail-stock-row">
                         <span
@@ -229,7 +322,7 @@ function ProductDetail() {
                             <CheckCircle2 size={18} />
                             {isOutOfStock
                                 ? "Hết hàng"
-                                : `Còn ${product.stock} sản phẩm`}
+                                : `Còn ${displayStock} sản phẩm`}
                         </span>
                     </div>
 
@@ -258,12 +351,12 @@ function ProductDetail() {
                                     aria-label="Tăng số lượng"
                                     disabled={
                                         adding ||
-                                        quantity >= product.stock
+                                        quantity >= displayStock
                                     }
                                     onClick={() =>
                                         setQuantity((prev) =>
                                             Math.min(
-                                                product.stock,
+                                                displayStock,
                                                 prev + 1
                                             )
                                         )

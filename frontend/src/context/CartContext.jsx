@@ -49,22 +49,22 @@ export function CartProvider({ children }) {
         refreshCart();
     }, [isAuthenticated, refreshCart]);
 
-    const addToCart = async (productId, quantity = 1) => {
+    const addToCart = async (productId, quantity = 1, variantId = null) => {
         if (!isAuthenticated) {
             throw new Error("AUTH_REQUIRED");
         }
 
-        await cartService.addItem(productId, quantity);
+        await cartService.addItem(productId, quantity, variantId);
         await refreshCart();
     };
 
-    const updateQuantity = async (productId, quantity) => {
-        await cartService.updateItem(productId, quantity);
+    const updateQuantity = async (cartItemId, quantity) => {
+        await cartService.updateItem(cartItemId, quantity);
         await refreshCart();
     };
 
-    const removeFromCart = async (productId) => {
-        await cartService.removeItem(productId);
+    const removeFromCart = async (cartItemId) => {
+        await cartService.removeItem(cartItemId);
         await refreshCart();
     };
 

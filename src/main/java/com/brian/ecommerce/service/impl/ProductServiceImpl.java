@@ -19,19 +19,60 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.CacheEvict;
 import java.util.Set;
 
+import com.brian.ecommerce.entity.ProductVariant;
+
+import com.brian.ecommerce.repository.CartItemRepository;
+import com.brian.ecommerce.repository.OrderItemRepository;
+import com.brian.ecommerce.repository.ProductVariantRepository;
+import com.brian.ecommerce.repository.ProductAttributeValueRepository;
+
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
+
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+
+import com.brian.ecommerce.dto.variant.ProductVariantSummary;
+
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+import java.util.List;
+
 @Service
 public class ProductServiceImpl implements ProductService {
 
+
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
+    private final ProductVariantRepository variantRepository;
+    private final CartItemRepository cartItemRepository;
+    private final OrderItemRepository orderItemRepository;
+    private final ProductAttributeValueRepository productAttributeValueRepository;
+    private final CacheManager cacheManager;
 
     public ProductServiceImpl(
             ProductRepository productRepository,
-            CategoryRepository categoryRepository) {
-
+            CategoryRepository categoryRepository,
+            ProductVariantRepository variantRepository,
+            CartItemRepository cartItemRepository,
+            OrderItemRepository orderItemRepository,
+            ProductAttributeValueRepository productAttributeValueRepository,
+            CacheManager cacheManager
+    ) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
+        this.variantRepository = variantRepository;
+        this.cartItemRepository = cartItemRepository;
+        this.orderItemRepository = orderItemRepository;
+        this.productAttributeValueRepository = productAttributeValueRepository;
+        this.cacheManager = cacheManager;
     }
+
 
     @Override
     public ProductResponse createProduct(ProductRequest request) {
@@ -107,18 +148,102 @@ public class ProductServiceImpl implements ProductService {
         return toResponse(updatedProduct);
     }
 
+
     @Override
-    @CacheEvict(value = "products", key = "#id")
+    @Transactional
     public void deleteProduct(Long id) {
 
-        Product product = productRepository.findById(id)
+        // 1. Find and lock product
+        Product product = productRepository.findByIdForUpdate(id)
                 .orElseThrow(() ->
                         new ProductNotFoundException(
                                 "Product not found with id: " + id
-                        ));
+                        )
+                );
 
-        productRepository.delete(product);
+        // 2. Find and lock all variants
+        List<ProductVariant> variants =
+                variantRepository.findByProductIdForUpdate(id);
+
+        // 3. Check order history
+        if (orderItemRepository.existsByProductId(id)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Cannot delete product because it exists in orders"
+            );
+        }
+
+        // 4. Check shopping carts
+        if (cartItemRepository.existsByProductId(id)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Cannot delete product because it exists in shopping carts"
+            );
+        }
+
+        // 5. Check variant references
+        for (ProductVariant variant : variants) {
+
+            if (orderItemRepository.existsByVariantId(
+                    variant.getId()
+            )) {
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "Cannot delete product because its variants exist in orders"
+                );
+            }
+
+            if (cartItemRepository.existsByVariantId(
+                    variant.getId()
+            )) {
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "Cannot delete product because its variants exist in shopping carts"
+                );
+            }
+        }
+
+        try {
+
+            // 6. Delete product specifications
+            productAttributeValueRepository.deleteByProductId(id);
+            productAttributeValueRepository.flush();
+
+            // 7. Delete product variants
+            variantRepository.deleteAll(variants);
+            variantRepository.flush();
+
+            // 8. Delete product
+            productRepository.delete(product);
+            productRepository.flush();
+
+        } catch (DataIntegrityViolationException ex) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Cannot delete product because it is being used",
+                    ex
+            );
+        }
+
+        // 9. Evict Redis cache after successful commit
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+
+                    @Override
+                    public void afterCommit() {
+
+                        Cache cache =
+                                cacheManager.getCache("products");
+
+                        if (cache != null) {
+                            cache.evict(id);
+                        }
+                    }
+                }
+        );
     }
+
 
 
     private ProductResponse toResponse(Product product) {
@@ -137,6 +262,37 @@ public class ProductServiceImpl implements ProductService {
                 product.getCreatedAt(),
                 product.getUpdatedAt()
         );
+    }
+
+    private ProductResponse applyVariantSummary(
+            ProductResponse response,
+            ProductVariantSummary summary
+    ) {
+        if (summary == null) {
+            return response;
+        }
+
+        response.setHasVariants(true);
+
+        response.setVariantCount(
+                summary.variantCount()
+        );
+
+        response.setMinVariantPrice(
+                summary.minAvailablePrice() != null
+                        ? summary.minAvailablePrice()
+                        : summary.minPrice()
+        );
+
+        response.setMaxVariantPrice(
+                summary.maxPrice()
+        );
+
+        response.setTotalVariantStock(
+                summary.totalStock()
+        );
+
+        return response;
     }
 
 
@@ -172,7 +328,16 @@ public class ProductServiceImpl implements ProductService {
 
         Page<Product> products;
 
-        if (keyword != null && !keyword.isBlank()
+        if ("price".equals(sortBy)) {
+
+            products = productRepository.findAllSortedByEffectivePrice(
+                    keyword == null ? "" : keyword.trim(),
+                    categoryId,
+                    "asc".equalsIgnoreCase(sortDir) ? "asc" : "desc",
+                    PageRequest.of(page, size)
+            );
+
+        } else if (keyword != null && !keyword.isBlank()
                 && categoryId != null) {
 
             products =
@@ -205,7 +370,29 @@ public class ProductServiceImpl implements ProductService {
                     productRepository.findAllWithCategory(pageable);
         }
 
-        return products.map(this::toResponse);
+        if (products.isEmpty()) {
+            return products.map(this::toResponse);
+        }
+
+        List<Long> productIds = products.getContent()
+                .stream()
+                .map(Product::getId)
+                .toList();
+
+        Map<Long, ProductVariantSummary> summaryMap =
+                variantRepository.findVariantSummaries(productIds)
+                        .stream()
+                        .collect(Collectors.toMap(
+                                ProductVariantSummary::productId,
+                                Function.identity()
+                        ));
+
+        return products.map(product ->
+                applyVariantSummary(
+                        toResponse(product),
+                        summaryMap.get(product.getId())
+                )
+        );
     }
 
 }

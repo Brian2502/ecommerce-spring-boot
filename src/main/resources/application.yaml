@@ -28,10 +28,21 @@ spring:
       time-to-live: 600000
       cache-null-values: false
 
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 5MB
+      max-request-size: 6MB
+
 logging:
   level:
     org.springframework.security: DEBUG
     org.springframework.cache.interceptor: TRACE
+
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME}
+  api-key: ${CLOUDINARY_API_KEY}
+  api-secret: ${CLOUDINARY_API_SECRET}
 
 server:
   port: 8081

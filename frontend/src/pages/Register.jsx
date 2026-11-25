@@ -1,15 +1,6 @@
-
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import {
-    ArrowRight,
-    Eye,
-    EyeOff,
-    ShoppingBag,
-    ShieldCheck,
-    Sparkles,
-    Check,
-} from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 
 import api from "../services/api";
 import "./Login.css";
@@ -40,6 +31,9 @@ function Register() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        if (loading) return;
+
         setError("");
 
         if (!form.name.trim()) {
@@ -69,9 +63,10 @@ function Register() {
             navigate("/login", {
                 replace: true,
                 state: {
-                    message: "Tạo tài khoản thành công! Hãy đăng nhập.",
+                    message: "Đăng ký thành công. Vui lòng đăng nhập.",
                 },
             });
+
         } catch (err) {
             const status = err.response?.status;
 
@@ -93,55 +88,27 @@ function Register() {
     return (
         <main className="uv-login uv-register">
             <div className="uv-login-shell">
+
                 <section className="uv-login-brand">
-                    <Link to="/" className="uv-brand-logo">
-                        <ShoppingBag size={23} />
-                        <span>
-              UV<strong>Mart.</strong>
-            </span>
-                    </Link>
-
                     <div className="uv-brand-content">
-                        <div className="uv-brand-eyebrow">
-                            <Sparkles size={15} />
-                            JOIN THE UVMART COMMUNITY
-                        </div>
+                        <Link to="/" className="uv-brand-logo">
+                            <img
+                                src="/images/logo.png"
+                                alt="UVMart"
+                            />
+                        </Link>
 
-                        <h1>
-                            Bắt đầu hành trình.
-                            <br />
-                            <span>Khám phá nhiều hơn.</span>
-                        </h1>
+                        <h2>Cửa hàng công nghệ</h2>
 
                         <p>
-                            Một tài khoản, nhiều trải nghiệm.
-                            Khám phá sản phẩm, quản lý giỏ hàng
-                            và theo dõi đơn hàng của bạn.
+                            Điện thoại, laptop và phụ kiện
+                            tại UVMart.
                         </p>
-
-                        <div className="uv-register-benefits">
-                            <div>
-                                <Check size={17} />
-                                <span>Khám phá sản phẩm dễ dàng</span>
-                            </div>
-                            <div>
-                                <Check size={17} />
-                                <span>Quản lý giỏ hàng cá nhân</span>
-                            </div>
-                            <div>
-                                <ShieldCheck size={17} />
-                                <span>Quản lý tài khoản thuận tiện</span>
-                            </div>
-                        </div>
                     </div>
 
                     <div className="uv-brand-bottom">
-                        <span>UVMART / EST. 2026</span>
-                        <span>MADE FOR YOUR EVERYDAY</span>
+                        © {new Date().getFullYear()} UVMart
                     </div>
-
-                    <div className="uv-brand-circle uv-circle-one" />
-                    <div className="uv-brand-circle uv-circle-two" />
                 </section>
 
                 <section className="uv-login-panel">
@@ -153,23 +120,20 @@ function Register() {
 
                     <div className="uv-login-content">
                         <div className="uv-login-heading">
-              <span className="uv-login-kicker">
-                CREATE YOUR ACCOUNT
-              </span>
-
-                            <h2>
-                                Tham gia UVMart<span>.</span>
-                            </h2>
+                            <h1>Đăng ký</h1>
 
                             <p>
-                                Tạo tài khoản miễn phí để bắt đầu
-                                trải nghiệm mua sắm của riêng bạn.
+                                Tạo tài khoản để mua hàng và
+                                theo dõi đơn hàng tại UVMart.
                             </p>
                         </div>
 
                         <form onSubmit={handleSubmit}>
                             {error && (
-                                <div className="uv-login-error" role="alert">
+                                <div
+                                    className="uv-login-error"
+                                    role="alert"
+                                >
                                     {error}
                                 </div>
                             )}
@@ -178,11 +142,12 @@ function Register() {
                                 <label htmlFor="register-name">
                                     Họ và tên
                                 </label>
+
                                 <input
                                     id="register-name"
                                     name="name"
                                     type="text"
-                                    placeholder="Nguyễn Văn A"
+                                    placeholder="Nhập họ và tên"
                                     value={form.name}
                                     onChange={handleChange}
                                     autoComplete="name"
@@ -192,13 +157,14 @@ function Register() {
 
                             <div className="uv-field">
                                 <label htmlFor="register-email">
-                                    Địa chỉ email
+                                    Email
                                 </label>
+
                                 <input
                                     id="register-email"
                                     name="email"
                                     type="email"
-                                    placeholder="name@example.com"
+                                    placeholder="Nhập địa chỉ email"
                                     value={form.email}
                                     onChange={handleChange}
                                     autoComplete="email"
@@ -210,6 +176,7 @@ function Register() {
                                 <label htmlFor="register-password">
                                     Mật khẩu
                                 </label>
+
                                 <div className="uv-password-wrap">
                                     <input
                                         id="register-password"
@@ -222,10 +189,13 @@ function Register() {
                                         minLength={6}
                                         required
                                     />
+
                                     <button
                                         type="button"
                                         className="uv-toggle-password"
-                                        onClick={() => setShowPassword(!showPassword)}
+                                        onClick={() =>
+                                            setShowPassword((prev) => !prev)
+                                        }
                                         aria-label={
                                             showPassword
                                                 ? "Ẩn mật khẩu"
@@ -245,10 +215,11 @@ function Register() {
                                 <label htmlFor="register-confirm">
                                     Xác nhận mật khẩu
                                 </label>
+
                                 <input
                                     id="register-confirm"
                                     name="confirmPassword"
-                                    type="password"
+                                    type={showPassword ? "text" : "password"}
                                     placeholder="Nhập lại mật khẩu"
                                     value={form.confirmPassword}
                                     onChange={handleChange}
@@ -262,23 +233,16 @@ function Register() {
                                 className="uv-login-submit"
                                 disabled={loading}
                             >
-                <span>
-                  {loading
-                      ? "Đang tạo tài khoản..."
-                      : "Tạo tài khoản"}
-                </span>
-                                <ArrowRight size={19} />
+                                {loading
+                                    ? "Đang đăng ký..."
+                                    : "Đăng ký"}
                             </button>
                         </form>
 
                         <div className="uv-login-register">
                             Đã có tài khoản?{" "}
-                            <Link to="/login">Đăng nhập ngay</Link>
+                            <Link to="/login">Đăng nhập</Link>
                         </div>
-                    </div>
-
-                    <div className="uv-login-footer">
-                        © 2026 UVMart. Your everyday marketplace.
                     </div>
                 </section>
             </div>

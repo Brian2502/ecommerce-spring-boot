@@ -52,12 +52,21 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests(auth -> auth
 
+                        // ADMIN: bảo vệ toàn bộ API quản trị
+                        .requestMatchers("/api/admin/**")
+                        .hasRole("ADMIN")
+
                         // Swagger
                         .requestMatchers(
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
                                 "/v3/api-docs/**"
                         ).permitAll()
+
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/products/*/variants"
+                        ).hasRole("ADMIN")
 
                         // Authentication & registration
                         .requestMatchers(HttpMethod.POST, "/api/users")
@@ -75,6 +84,18 @@ public class SecurityConfig {
                                 "/api/categories/**",
                                 "/api/attribute-groups"
                         ).permitAll()
+
+                        // ADMIN: gán thuộc tính cho danh mục
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/categories/*/attributes/*"
+                        ).hasRole("ADMIN")
+
+                        // ADMIN: xóa thuộc tính khỏi danh mục
+                        .requestMatchers(
+                                HttpMethod.DELETE,
+                                "/api/categories/*/attributes/*"
+                        ).hasRole("ADMIN")
 
                         // ADMIN: quản lý sản phẩm
                         .requestMatchers(
@@ -138,6 +159,8 @@ public class SecurityConfig {
                                 "/api/orders/*/status"
                         ).hasRole("ADMIN")
 
+                        // Cho phép Spring Boot trả về thông tin lỗi
+                        .requestMatchers("/error").permitAll()
                         // Các API còn lại yêu cầu đăng nhập
                         .anyRequest().authenticated()
                 )

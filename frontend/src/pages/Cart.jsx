@@ -46,14 +46,15 @@ function Cart() {
         0
     );
 
-    const handleUpdate = async (productId, quantity) => {
+
+    const handleUpdate = async (cartItemId, quantity) => {
         if (quantity < 1) return;
 
-        setBusyId(productId);
+        setBusyId(cartItemId);
         setActionError("");
 
         try {
-            await updateQuantity(productId, quantity);
+            await updateQuantity(cartItemId, quantity);
         } catch (err) {
             setActionError("Không thể cập nhật số lượng.");
         } finally {
@@ -61,12 +62,13 @@ function Cart() {
         }
     };
 
-    const handleRemove = async (productId) => {
-        setBusyId(productId);
+
+    const handleRemove = async (cartItemId) => {
+        setBusyId(cartItemId);
         setActionError("");
 
         try {
-            await removeFromCart(productId);
+            await removeFromCart(cartItemId);
         } catch (err) {
             setActionError("Không thể xóa sản phẩm.");
         } finally {
@@ -182,7 +184,7 @@ function Cart() {
                             {items.map((item) => (
                                 <article
                                     className="uv-cart-item"
-                                    key={item.productId}
+                                    key={item.cartItemId}
                                 >
                                     <Link
                                         to={`/products/${item.productId}`}
@@ -192,6 +194,7 @@ function Cart() {
                                         <Package size={42} />
                                     </Link>
 
+
                                     <div className="uv-cart-item-info">
                                         <Link
                                             to={`/products/${item.productId}`}
@@ -200,9 +203,16 @@ function Cart() {
                                             {item.productName}
                                         </Link>
 
+                                        {item.variantId != null && (
+                                            <p className="uv-cart-item-variant">
+                                                {item.color} · {item.storage}
+                                            </p>
+                                        )}
+
                                         <p className="uv-cart-item-price">
                                             {formatPrice(item.price)}
                                         </p>
+
 
                                         <div className="uv-cart-item-actions">
                                             <div className="uv-cart-quantity">
@@ -210,12 +220,12 @@ function Cart() {
                                                     type="button"
                                                     aria-label="Giảm số lượng"
                                                     disabled={
-                                                        busyId === item.productId ||
+                                                        busyId === item.cartItemId ||
                                                         item.quantity <= 1
                                                     }
                                                     onClick={() =>
                                                         handleUpdate(
-                                                            item.productId,
+                                                            item.cartItemId,
                                                             item.quantity - 1
                                                         )
                                                     }
@@ -228,10 +238,10 @@ function Cart() {
                                                 <button
                                                     type="button"
                                                     aria-label="Tăng số lượng"
-                                                    disabled={busyId === item.productId}
+                                                    disabled={busyId === item.cartItemId}
                                                     onClick={() =>
                                                         handleUpdate(
-                                                            item.productId,
+                                                            item.cartItemId,
                                                             item.quantity + 1
                                                         )
                                                     }
@@ -243,9 +253,9 @@ function Cart() {
                                             <button
                                                 type="button"
                                                 className="uv-cart-remove"
-                                                disabled={busyId === item.productId}
+                                                disabled={busyId === item.cartItemId}
                                                 onClick={() =>
-                                                    handleRemove(item.productId)
+                                                    handleRemove(item.cartItemId)
                                                 }
                                             >
                                                 <Trash2 size={16} />

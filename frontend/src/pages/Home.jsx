@@ -92,9 +92,23 @@ function Home() {
     };
 
     const handleAddToCart = async (product) => {
+
+        // Products with variants require SKU selection
+        if (product.hasVariants) {
+            navigate(`/products/${product.id}`);
+            return;
+        }
+
+        if (product.stock <= 0) {
+            alert("Sản phẩm đã hết hàng.");
+            return;
+        }
+
         try {
             await addToCart(product.id, 1);
+
             alert(`Đã thêm ${product.name} vào giỏ hàng!`);
+
         } catch (error) {
             if (error.message === "AUTH_REQUIRED") {
                 navigate("/login");
@@ -102,7 +116,11 @@ function Home() {
             }
 
             console.error("Failed to add to cart:", error);
-            alert("Không thể thêm sản phẩm vào giỏ hàng.");
+
+            alert(
+                error.response?.data?.message ||
+                "Không thể thêm sản phẩm vào giỏ hàng."
+            );
         }
     };
 
@@ -112,37 +130,42 @@ function Home() {
             <section className="hero-banner">
                 <div className="hero-content">
                     <p className="hero-eyebrow">
-                        WELCOME TO UVMART
+                        ĐIỆN THOẠI • LAPTOP • PHỤ KIỆN
                     </p>
 
                     <h1>
-                        Nâng tầm
+                        Công nghệ
                         <br />
-                        trải nghiệm số.
+                        cho mỗi ngày.
                     </h1>
 
                     <p className="hero-description">
-                        Khám phá laptop, điện thoại và phụ kiện
-                        công nghệ hiện đại. Mua sắm dễ dàng
-                        cùng UVMart.
+                        Tìm mua điện thoại, laptop, tai nghe
+                        và phụ kiện phù hợp với nhu cầu của bạn.
                     </p>
 
                     <a href="#products">
-                        Khám phá ngay →
+                        Xem sản phẩm →
                     </a>
                 </div>
 
                 <img
                     className="hero-image"
                     src="/images/hero-headphones.png"
-                    alt="Tai nghe công nghệ UVMart"
+                    alt="Tai nghe tại UVMart"
                 />
             </section>
 
 
             <section id="products" className="products-section">
                 <div className="section-heading">
-                    <h2>Sản phẩm nổi bật</h2>
+                    <h2>
+                        {keyword
+                            ? `Kết quả tìm kiếm: "${keyword}"`
+                            : categoryId
+                                ? "Sản phẩm theo danh mục"
+                                : "Tất cả sản phẩm"}
+                    </h2>
 
                 </div>
 

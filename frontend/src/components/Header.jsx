@@ -95,7 +95,11 @@ function Header() {
 
                 {/* Brand */}
                 <Link to="/" className="brand">
-                    UV<span>Mart</span>
+                    <img
+                        src="/images/logo.png"
+                        alt="UVMart"
+                        className="brand-logo"
+                    />
                 </Link>
 
                 {/* Search */}

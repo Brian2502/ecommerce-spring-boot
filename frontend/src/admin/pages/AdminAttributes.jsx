@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import api from "../services/api";
+import api from "../../services/api.js";
 import { Plus, Layers3 } from "lucide-react";
-import "./AdminAttributes.css";
+import "../styles/AdminAttributes.css";
 
 export default function AdminAttributes() {
     const [groups, setGroups] = useState([]);

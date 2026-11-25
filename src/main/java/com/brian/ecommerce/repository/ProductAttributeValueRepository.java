@@ -28,4 +28,6 @@ public interface ProductAttributeValueRepository
     List<ProductAttributeValue> findSpecifications(
             @Param("productId") Long productId
     );
+
+    void deleteByProductId(Long productId);
 }

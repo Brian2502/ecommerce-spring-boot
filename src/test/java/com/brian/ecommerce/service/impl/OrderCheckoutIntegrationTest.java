@@ -47,7 +47,8 @@ class OrderCheckoutIntegrationTest {
     @Autowired private CartItemRepository cartItemRepository;
     @Autowired private OrderRepository orderRepository;
     @Autowired private OrderItemRepository orderItemRepository;
-
+    @Autowired
+    private ProductVariantRepository variantRepository;
 
     @Test
     void shouldCheckoutSuccessfully() {
@@ -170,4 +171,160 @@ class OrderCheckoutIntegrationTest {
                 cartItemRepository.findByCart(cart).isEmpty()
         );
     }
+
+
+    @Test
+    void shouldCheckoutProductVariantSuccessfully() {
+
+        String suffix = UUID.randomUUID().toString();
+
+        // 1. Create category
+        Category category = new Category();
+        category.setName("Phone Category " + suffix);
+        category.setDescription("Test");
+        category = categoryRepository.save(category);
+
+        // 2. Create base product
+        Product product = new Product();
+        product.setName("iPhone " + suffix);
+        product.setDescription("Variant checkout test");
+        product.setPrice(BigDecimal.valueOf(20000000));
+        product.setStock(100);
+        product.setCategory(category);
+        product = productRepository.save(product);
+
+        Long productId = product.getId();
+
+        // 3. Create variant A
+        ProductVariant variantA = new ProductVariant();
+        variantA.setProduct(product);
+        variantA.setSku("TEST-A-" + suffix);
+        variantA.setColor("Black");
+        variantA.setStorage("128GB");
+        variantA.setPrice(BigDecimal.valueOf(22000000));
+        variantA.setStock(10);
+        variantA = variantRepository.save(variantA);
+
+        Long variantAId = variantA.getId();
+
+        // 4. Create variant B
+        ProductVariant variantB = new ProductVariant();
+        variantB.setProduct(product);
+        variantB.setSku("TEST-B-" + suffix);
+        variantB.setColor("White");
+        variantB.setStorage("256GB");
+        variantB.setPrice(BigDecimal.valueOf(25000000));
+        variantB.setStock(5);
+        variantB = variantRepository.save(variantB);
+
+        Long variantBId = variantB.getId();
+
+        // 5. Create user
+        User user = new User();
+        user.setName("Variant Checkout User");
+        user.setEmail("variant-" + suffix + "@gmail.com");
+        user.setPassword("password");
+        user.setRole("USER");
+        user = userRepository.save(user);
+
+        Long userId = user.getId();
+        String email = user.getEmail();
+
+        // 6. Create cart
+        Cart cart = new Cart();
+        cart.setUser(user);
+        cart = cartRepository.save(cart);
+
+        // 7. Add variant A to cart
+        CartItem itemA = new CartItem();
+        itemA.setCart(cart);
+        itemA.setProduct(product);
+        itemA.setVariant(variantA);
+        itemA.setQuantity(2);
+        cartItemRepository.save(itemA);
+
+        // 8. Add variant B to cart
+        CartItem itemB = new CartItem();
+        itemB.setCart(cart);
+        itemB.setProduct(product);
+        itemB.setVariant(variantB);
+        itemB.setQuantity(1);
+        cartItemRepository.save(itemB);
+
+        // 9. Checkout
+        assertDoesNotThrow(
+                () -> orderService.checkout(email)
+        );
+
+        // 10. Verify order
+        List<Order> orders =
+                orderRepository.findByUserId(userId);
+
+        assertEquals(1, orders.size());
+
+        Order order = orders.get(0);
+
+        assertEquals(
+                OrderStatus.PENDING,
+                order.getStatus()
+        );
+
+        // 2 * 22,000,000 + 1 * 25,000,000
+        assertEquals(
+                0,
+                BigDecimal.valueOf(69000000)
+                        .compareTo(order.getTotalPrice())
+        );
+
+        // 11. Verify order items
+        List<OrderItem> orderItems =
+                orderItemRepository.findByOrderId(order.getId());
+
+        assertEquals(2, orderItems.size());
+
+        assertTrue(orderItems.stream().anyMatch(
+                item -> item.getVariant() != null
+                        && item.getVariant().getId().equals(variantAId)
+                        && item.getProduct().getId().equals(productId)
+                        && item.getQuantity() == 2
+                        && item.getPrice().compareTo(
+                        BigDecimal.valueOf(22000000)
+                ) == 0
+        ));
+
+        assertTrue(orderItems.stream().anyMatch(
+                item -> item.getVariant() != null
+                        && item.getVariant().getId().equals(variantBId)
+                        && item.getProduct().getId().equals(productId)
+                        && item.getQuantity() == 1
+                        && item.getPrice().compareTo(
+                        BigDecimal.valueOf(25000000)
+                ) == 0
+        ));
+
+        // 12. Verify variant stock
+        ProductVariant updatedA = variantRepository
+                .findById(variantAId)
+                .orElseThrow();
+
+        ProductVariant updatedB = variantRepository
+                .findById(variantBId)
+                .orElseThrow();
+
+        assertEquals(8, updatedA.getStock());
+        assertEquals(4, updatedB.getStock());
+
+        // 13. Base product stock must remain unchanged
+        Product updatedProduct = productRepository
+                .findById(productId)
+                .orElseThrow();
+
+        assertEquals(100, updatedProduct.getStock());
+
+        // 14. Verify cart is empty
+        assertTrue(
+                cartItemRepository.findByCart(cart).isEmpty()
+        );
+    }
+
 }

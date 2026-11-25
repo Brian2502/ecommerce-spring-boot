@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Plus, ListTree } from "lucide-react";
-import api from "../services/api";
+import api from "../../services/api.js";
 
-import "./AdminAttributes.css";
+import "../styles/AdminAttributes.css";
 
 export default function AdminAttributeItems() {
     const [groups, setGroups] = useState([]);

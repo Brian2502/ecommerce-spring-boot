@@ -62,4 +62,62 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
         WHERE p.id = :id
         """)
     Optional<Product> findByIdWithCategory(@Param("id") Long id);
+
+    @Query(
+            value = """
+        SELECT p
+        FROM Product p
+        WHERE (
+            :keyword = ''
+            OR LOWER(p.name) LIKE LOWER(
+                CONCAT('%', :keyword, '%')
+            )
+        )
+        AND (:categoryId IS NULL OR p.category.id = :categoryId)
+        ORDER BY
+            CASE WHEN :sortDir = 'asc' THEN
+                COALESCE(
+                    (SELECT MIN(v.price)
+                     FROM ProductVariant v
+                     WHERE v.product.id = p.id
+                     AND v.stock > 0),
+                    (SELECT MIN(v.price)
+                     FROM ProductVariant v
+                     WHERE v.product.id = p.id),
+                    p.price
+                )
+            END ASC,
+            CASE WHEN :sortDir = 'desc' THEN
+                COALESCE(
+                    (SELECT MIN(v.price)
+                     FROM ProductVariant v
+                     WHERE v.product.id = p.id
+                     AND v.stock > 0),
+                    (SELECT MIN(v.price)
+                     FROM ProductVariant v
+                     WHERE v.product.id = p.id),
+                    p.price
+                )
+            END DESC,
+            p.id ASC
+        """,
+            countQuery = """
+        SELECT COUNT(p)
+        FROM Product p
+        WHERE (
+            :keyword = ''
+            OR LOWER(p.name) LIKE LOWER(
+                CONCAT('%', :keyword, '%')
+            )
+        )
+        AND (:categoryId IS NULL OR p.category.id = :categoryId)
+        """
+    )
+    @EntityGraph(attributePaths = "category")
+    Page<Product> findAllSortedByEffectivePrice(
+            @Param("keyword") String keyword,
+            @Param("categoryId") Long categoryId,
+            @Param("sortDir") String sortDir,
+            Pageable pageable
+    );
 }

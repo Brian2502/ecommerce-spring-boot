@@ -174,10 +174,10 @@ function OrderDetail() {
                         <span>{items.length} loại sản phẩm</span>
                     </div>
 
-                    {items.map((item) => (
+                    {items.map((item, index) => (
                         <div
                             className="uv-order-detail-item"
-                            key={item.productId}
+                            key={`${item.productId}-${item.variantId ?? "default"}-${index}`}
                         >
                             <Link
                                 to={`/products/${item.productId}`}
@@ -186,15 +186,25 @@ function OrderDetail() {
                                 <Package size={32} />
                             </Link>
 
+
                             <div className="uv-order-detail-product-info">
                                 <Link to={`/products/${item.productId}`}>
                                     {item.productName}
                                 </Link>
 
+                                {item.variantId != null && (
+                                    <p className="uv-order-detail-variant">
+                                        {[item.color, item.storage]
+                                            .filter(Boolean)
+                                            .join(" · ")}
+                                    </p>
+                                )}
+
                                 <p>
                                     {formatPrice(item.price)} × {item.quantity}
                                 </p>
                             </div>
+
 
                             <strong>
                                 {formatPrice(

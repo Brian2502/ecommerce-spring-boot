@@ -7,20 +7,21 @@ export const cartService = {
         return response.data;
     },
 
-    addItem: async (productId, quantity = 1) => {
+    addItem: async (productId, quantity = 1, variantId = null) => {
         await api.post("/cart/items", {
             productId,
+            variantId,
             quantity,
         });
     },
 
-    updateItem: async (productId, quantity) => {
-        await api.put(`/cart/items/${productId}`, {
+    updateItem: async (cartItemId, quantity) => {
+        await api.put(`/cart/items/${cartItemId}`, {
             quantity,
         });
     },
 
-    removeItem: async (productId) => {
-        await api.delete(`/cart/items/${productId}`);
+    removeItem: async (cartItemId) => {
+        await api.delete(`/cart/items/${cartItemId}`);
     },
 };

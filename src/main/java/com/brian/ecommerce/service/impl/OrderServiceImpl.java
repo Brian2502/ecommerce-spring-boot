@@ -26,6 +26,15 @@ import java.util.HashMap;
 import java.util.Map;
 import com.brian.ecommerce.exception.OrderNotFoundException;
 import com.brian.ecommerce.exception.OrderAccessDeniedException;
+import com.brian.ecommerce.entity.ProductVariant;
+import com.brian.ecommerce.repository.ProductVariantRepository;
+
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import java.util.Set;
+import java.util.HashSet;
 
 @Service
 public class OrderServiceImpl implements OrderService {
@@ -36,6 +45,8 @@ public class OrderServiceImpl implements OrderService {
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final ProductRepository productRepository;
+    private final ProductVariantRepository variantRepository;
+    private final CacheManager cacheManager;
 
     public OrderServiceImpl(
             UserRepository userRepository,
@@ -43,7 +54,9 @@ public class OrderServiceImpl implements OrderService {
             CartItemRepository cartItemRepository,
             OrderRepository orderRepository,
             OrderItemRepository orderItemRepository,
-            ProductRepository productRepository
+            ProductRepository productRepository,
+            ProductVariantRepository variantRepository,
+            CacheManager cacheManager
     ) {
         this.userRepository = userRepository;
         this.cartRepository = cartRepository;
@@ -51,7 +64,10 @@ public class OrderServiceImpl implements OrderService {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.productRepository = productRepository;
+        this.variantRepository = variantRepository;
+        this.cacheManager = cacheManager;
     }
+
 
     @Override
     @Transactional
@@ -59,111 +75,214 @@ public class OrderServiceImpl implements OrderService {
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() ->
-                        new RuntimeException(
-                                "User not found with email: " + email
-                        ));
+                        new RuntimeException("User not found"));
 
         Cart cart = cartRepository.findByUserIdForUpdate(user.getId())
                 .orElseThrow(() ->
-                        new RuntimeException(
-                                "Cart not found for user: " + user.getId()
-                        ));
+                        new RuntimeException("Cart not found"));
 
-        List<CartItem> cartItems =
-                cartItemRepository.findByCart(cart);
-
-        cartItems.sort(
-                java.util.Comparator.comparing(
-                        item -> item.getProduct().getId()
-                )
-        );
+        List<CartItem> cartItems = cartItemRepository.findByCart(cart);
 
         if (cartItems.isEmpty()) {
             throw new RuntimeException("Cart is empty");
         }
 
-        BigDecimal totalPrice = BigDecimal.ZERO;
+        // Gom số lượng theo từng sản phẩm thường hoặc biến thể.
+        Map<Long, Integer> productQuantities = new HashMap<>();
+        Map<Long, Integer> variantQuantities = new HashMap<>();
+
+        for (CartItem item : cartItems) {
+
+            int quantity = item.getQuantity();
+
+            if (quantity <= 0) {
+                throw new RuntimeException("Invalid quantity");
+            }
+
+            if (item.getVariant() != null) {
+                Long variantId = item.getVariant().getId();
+
+                variantQuantities.merge(
+                        variantId,
+                        quantity,
+                        Math::addExact
+                );
+            } else {
+                Long productId = item.getProduct().getId();
+
+                productQuantities.merge(
+                        productId,
+                        quantity,
+                        Math::addExact
+                );
+            }
+        }
 
         Map<Long, Product> lockedProducts = new HashMap<>();
+        Map<Long, ProductVariant> lockedVariants = new HashMap<>();
 
-        // 1. Lock Product + kiểm tra stock + tính tổng tiền
-        for (CartItem cartItem : cartItems) {
+        // Khóa Product theo ID tăng dần.
+        List<Long> productIds = productQuantities.keySet()
+                .stream()
+                .sorted()
+                .toList();
 
-            Long productId =
-                    cartItem.getProduct().getId();
+        for (Long productId : productIds) {
 
-            Product product =
-                    productRepository.findByIdForUpdate(productId)
-                            .orElseThrow(() ->
-                                    new RuntimeException(
-                                            "Product not found with id: "
-                                                    + productId
-                                    ));
+            Product product = productRepository
+                    .findByIdForUpdate(productId)
+                    .orElseThrow(() ->
+                            new RuntimeException(
+                                    "Product not found: " + productId
+                            ));
 
-            if (cartItem.getQuantity() > product.getStock()) {
+            if (!variantRepository
+                    .findByProductIdOrderByIdAsc(productId)
+                    .isEmpty()) {
                 throw new RuntimeException(
-                        "Not enough stock for product: "
-                                + product.getName()
+                        "Please select a product variant"
+                );
+            }
+
+            int quantity = productQuantities.get(productId);
+
+            if (product.getStock() < quantity) {
+                throw new RuntimeException(
+                        "Not enough stock: " + product.getName()
                 );
             }
 
             lockedProducts.put(productId, product);
-
-            BigDecimal itemTotal =
-                    product.getPrice()
-                            .multiply(
-                                    BigDecimal.valueOf(
-                                            cartItem.getQuantity()
-                                    )
-                            );
-
-            totalPrice = totalPrice.add(itemTotal);
         }
 
-        // 2. Tạo Order
-        Order order = new Order();
+        // Khóa ProductVariant theo ID tăng dần.
+        List<Long> variantIds = variantQuantities.keySet()
+                .stream()
+                .sorted()
+                .toList();
 
+        for (Long variantId : variantIds) {
+
+            ProductVariant variant = variantRepository
+                    .findByIdForUpdate(variantId)
+                    .orElseThrow(() ->
+                            new RuntimeException(
+                                    "Variant not found: " + variantId
+                            ));
+
+            int quantity = variantQuantities.get(variantId);
+
+            if (variant.getStock() < quantity) {
+                throw new RuntimeException(
+                        "Not enough stock for SKU: " + variant.getSku()
+                );
+            }
+
+            lockedVariants.put(variantId, variant);
+        }
+
+        // Tính tổng tiền bằng giá hiện tại của sản phẩm/biến thể.
+        BigDecimal totalPrice = BigDecimal.ZERO;
+
+        for (CartItem item : cartItems) {
+
+            BigDecimal price;
+
+            if (item.getVariant() != null) {
+
+                Long variantId = item.getVariant().getId();
+                ProductVariant variant = lockedVariants.get(variantId);
+
+                if (!variant.getProduct().getId()
+                        .equals(item.getProduct().getId())) {
+                    throw new RuntimeException(
+                            "Variant does not belong to product"
+                    );
+                }
+
+                price = variant.getPrice();
+
+            } else {
+
+                Product product = lockedProducts.get(
+                        item.getProduct().getId()
+                );
+
+                price = product.getPrice();
+            }
+
+            totalPrice = totalPrice.add(
+                    price.multiply(
+                            BigDecimal.valueOf(item.getQuantity())
+                    )
+            );
+        }
+
+        // Tạo Order.
+        Order order = new Order();
         order.setUser(user);
         order.setTotalPrice(totalPrice);
         order.setStatus(OrderStatus.PENDING);
 
-        Order savedOrder =
-                orderRepository.save(order);
+        Order savedOrder = orderRepository.save(order);
 
-        // 3. Tạo OrderItem + trừ stock
-        for (CartItem cartItem : cartItems) {
+        // Lưu từng OrderItem với giá tại thời điểm mua.
+        for (CartItem item : cartItems) {
 
-            Long productId =
-                    cartItem.getProduct().getId();
+            Product product = item.getProduct();
 
-            Product product =
-                    lockedProducts.get(productId);
+            ProductVariant variant = item.getVariant() == null
+                    ? null
+                    : lockedVariants.get(item.getVariant().getId());
 
-            OrderItem orderItem =
-                    new OrderItem();
+            BigDecimal price = variant != null
+                    ? variant.getPrice()
+                    : lockedProducts.get(product.getId()).getPrice();
+
+            OrderItem orderItem = new OrderItem();
 
             orderItem.setOrder(savedOrder);
             orderItem.setProduct(product);
-            orderItem.setQuantity(
-                    cartItem.getQuantity()
-            );
-            orderItem.setPrice(
-                    product.getPrice()
-            );
+            orderItem.setVariant(variant);
+            orderItem.setQuantity(item.getQuantity());
+            orderItem.setPrice(price);
 
             orderItemRepository.save(orderItem);
+        }
+
+        // Trừ tồn kho sau khi đã kiểm tra đủ số lượng.
+        for (Long productId : productIds) {
+
+            Product product = lockedProducts.get(productId);
 
             product.setStock(
-                    product.getStock()
-                            - cartItem.getQuantity()
+                    product.getStock() - productQuantities.get(productId)
             );
         }
 
-        // 4. Xóa CartItem
-        for (CartItem cartItem : cartItems) {
-            cartItemRepository.delete(cartItem);
+        for (Long variantId : variantIds) {
+
+            ProductVariant variant = lockedVariants.get(variantId);
+
+            variant.setStock(
+                    variant.getStock() - variantQuantities.get(variantId)
+            );
         }
+
+        // Collect affected product IDs
+        Set<Long> affectedProductIds = new HashSet<>();
+
+        for (CartItem item : cartItems) {
+            affectedProductIds.add(item.getProduct().getId());
+        }
+
+        // Xóa các sản phẩm đã checkout khỏi giỏ hàng.
+        cartItemRepository.deleteAll(cartItems);
+
+        // Invalidate product caches after successful commit
+        evictProductCachesAfterCommit(affectedProductIds);
     }
+
 
     @Override
     @Transactional(readOnly = true)
@@ -216,15 +335,24 @@ public class OrderServiceImpl implements OrderService {
         List<OrderItem> orderItems =
                 orderItemRepository.findByOrderId(orderId);
 
+
         List<OrderItemResponse> itemResponses =
                 orderItems.stream()
-                        .map(item -> new OrderItemResponse(
-                                item.getProduct().getId(),
-                                item.getProduct().getName(),
-                                item.getQuantity(),
-                                item.getPrice()
-                        ))
+                        .map(item -> {
+                            ProductVariant variant = item.getVariant();
+
+                            return new OrderItemResponse(
+                                    item.getProduct().getId(),
+                                    variant != null ? variant.getId() : null,
+                                    item.getProduct().getName(),
+                                    variant != null ? variant.getColor() : null,
+                                    variant != null ? variant.getStorage() : null,
+                                    item.getQuantity(),
+                                    item.getPrice()
+                            );
+                        })
                         .toList();
+
 
         return new OrderDetailResponse(
                 order.getId(),
@@ -270,24 +398,23 @@ public class OrderServiceImpl implements OrderService {
     }
 
 
+
     @Override
     @Transactional
     public void cancelOrder(Long orderId, String email) {
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() ->
-                        new RuntimeException(
-                                "User not found with email: " + email
-                        ));
+                        new RuntimeException("User not found"));
 
         Order order = orderRepository.findByIdForUpdate(orderId)
                 .orElseThrow(() ->
                         new OrderNotFoundException(
-                                "Order not found with id: " + orderId
+                                "Order not found: " + orderId
                         ));
 
         if (!order.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException(
+            throw new OrderAccessDeniedException(
                     "You cannot cancel this order"
             );
         }
@@ -298,19 +425,33 @@ public class OrderServiceImpl implements OrderService {
             );
         }
 
-
         List<OrderItem> orderItems =
                 orderItemRepository.findByOrderId(orderId);
 
-        List<Long> productIds = orderItems.stream()
-                .map(item -> item.getProduct().getId())
-                .distinct()
-                .sorted()
-                .toList();
+        Map<Long, Integer> productQuantities = new HashMap<>();
+        Map<Long, Integer> variantQuantities = new HashMap<>();
 
-        Map<Long, Product> lockedProducts = new HashMap<>();
+        for (OrderItem item : orderItems) {
 
-        for (Long productId : productIds) {
+            if (item.getVariant() != null) {
+                variantQuantities.merge(
+                        item.getVariant().getId(),
+                        item.getQuantity(),
+                        Math::addExact
+                );
+            } else {
+                productQuantities.merge(
+                        item.getProduct().getId(),
+                        item.getQuantity(),
+                        Math::addExact
+                );
+            }
+        }
+
+        // Khóa và hoàn tồn kho sản phẩm thường.
+        for (Long productId : productQuantities.keySet()
+                .stream().sorted().toList()) {
+
             Product product = productRepository
                     .findByIdForUpdate(productId)
                     .orElseThrow(() ->
@@ -318,20 +459,70 @@ public class OrderServiceImpl implements OrderService {
                                     "Product not found: " + productId
                             ));
 
-            lockedProducts.put(productId, product);
+            product.setStock(
+                    Math.addExact(
+                            product.getStock(),
+                            productQuantities.get(productId)
+                    )
+            );
         }
 
-        for (OrderItem item : orderItems) {
-            Product product = lockedProducts.get(
-                    item.getProduct().getId()
-            );
+        // Khóa và hoàn tồn kho từng biến thể.
+        for (Long variantId : variantQuantities.keySet()
+                .stream().sorted().toList()) {
 
-            product.setStock(
-                    product.getStock() + item.getQuantity()
+            ProductVariant variant = variantRepository
+                    .findByIdForUpdate(variantId)
+                    .orElseThrow(() ->
+                            new RuntimeException(
+                                    "Variant not found: " + variantId
+                            ));
+
+            variant.setStock(
+                    Math.addExact(
+                            variant.getStock(),
+                            variantQuantities.get(variantId)
+                    )
             );
         }
 
         order.setStatus(OrderStatus.CANCELLED);
 
+        // Collect affected product IDs
+        Set<Long> affectedProductIds = new HashSet<>();
+
+        for (OrderItem item : orderItems) {
+            affectedProductIds.add(item.getProduct().getId());
+        }
+
+        // Invalidate product caches after successful commit
+        evictProductCachesAfterCommit(affectedProductIds);
     }
+
+    private void evictProductCachesAfterCommit(Set<Long> productIds) {
+
+        if (productIds.isEmpty()) {
+            return;
+        }
+
+        Set<Long> ids = Set.copyOf(productIds);
+
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+
+                    @Override
+                    public void afterCommit() {
+
+                        Cache cache = cacheManager.getCache("products");
+
+                        if (cache != null) {
+                            for (Long productId : ids) {
+                                cache.evict(productId);
+                            }
+                        }
+                    }
+                }
+        );
+    }
+
 }

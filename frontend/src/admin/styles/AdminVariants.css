@@ -1,0 +1,206 @@
+
+/* Inventory summary */
+
+.uv-variant-summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-bottom: 20px;
+    background: #fff;
+    border: 1px solid #dfe3e8;
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.uv-variant-stat {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 9px;
+    padding: 20px 24px;
+    border: none;
+    border-right: 1px solid #dfe3e8;
+    background: #fff;
+    color: #131921;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.uv-variant-stat:last-child {
+    border-right: none;
+}
+
+.uv-variant-stat:hover {
+    background: #fafbfc;
+}
+
+.uv-variant-stat.active {
+    background: #fffcf5;
+}
+
+.uv-variant-stat.active::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: #ff9900;
+}
+
+.uv-variant-stat > span {
+    font-size: 13px;
+    color: #64748b;
+}
+
+.uv-variant-stat > strong {
+    font-size: 28px;
+    line-height: 1.2;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.uv-variant-stat > small {
+    color: #94a3b8;
+    font-size: 11px;
+}
+
+/* Filters */
+
+.uv-variant-product-filter {
+    max-width: 240px;
+}
+
+/* Variant table */
+
+.uv-variant-table {
+    min-width: 800px;
+}
+
+.uv-variant-name {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 180px;
+}
+
+.uv-variant-name strong {
+    color: #131921;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.uv-variant-name small {
+    color: #64748b;
+    font-size: 11px;
+    overflow-wrap: anywhere;
+}
+
+.uv-variant-stock {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 80px;
+}
+
+.uv-variant-stock strong {
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+}
+
+.uv-variant-stock small {
+    color: #64748b;
+    font-size: 11px;
+}
+
+/* Modal */
+
+.uv-variant-modal {
+    max-width: 600px;
+}
+
+.uv-variant-price-row {
+    margin-top: 20px;
+}
+
+.uv-variant-modal input:disabled,
+.uv-variant-modal select:disabled {
+    background: #f1f5f9;
+    color: #64748b;
+    cursor: not-allowed;
+}
+
+/* Responsive */
+
+@media (max-width: 768px) {
+    .uv-variant-stat {
+        padding: 16px;
+    }
+
+    .uv-variant-stat > strong {
+        font-size: 24px;
+    }
+
+    .uv-variant-product-filter {
+        max-width: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .uv-variant-stat {
+        padding: 12px;
+    }
+
+    .uv-variant-stat > span {
+        font-size: 11px;
+    }
+
+    .uv-variant-stat > strong {
+        font-size: 22px;
+    }
+
+    .uv-variant-stat > small {
+        display: none;
+    }
+}
+
+
+.uv-variant-product-cell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.uv-variant-thumbnail {
+    width: 52px;
+    height: 52px;
+    flex-shrink: 0;
+    object-fit: contain;
+    padding: 4px;
+    border: 1px solid #e5e7eb;
+    border-radius: 5px;
+    background: #fff;
+    box-sizing: border-box;
+}
+
+.uv-variant-modal {
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.uv-variant-modal > form {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.uv-variant-modal .uv-modal-body {
+    overflow-y: auto;
+    min-height: 0;
+}
+
+.uv-variant-modal .uv-modal-footer {
+    flex-shrink: 0;
+}

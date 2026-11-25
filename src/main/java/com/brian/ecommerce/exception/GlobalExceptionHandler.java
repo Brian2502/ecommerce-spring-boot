@@ -5,6 +5,9 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.dao.DataIntegrityViolationException;
 
 
 
@@ -98,6 +101,33 @@ public class GlobalExceptionHandler {
         return new ErrorResponse(
                 HttpStatus.FORBIDDEN.value(),
                 ex.getMessage()
+        );
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ErrorResponse> handleResponseStatusException(
+            ResponseStatusException ex) {
+
+        String message = ex.getReason() != null
+                ? ex.getReason()
+                : "Request failed";
+
+        return ResponseEntity
+                .status(ex.getStatusCode())
+                .body(new ErrorResponse(
+                        ex.getStatusCode().value(),
+                        message
+                ));
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ErrorResponse handleDataIntegrityViolationException(
+            DataIntegrityViolationException ex) {
+
+        return new ErrorResponse(
+                HttpStatus.CONFLICT.value(),
+                "Operation conflicts with existing data"
         );
     }
 

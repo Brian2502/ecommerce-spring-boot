@@ -1,0 +1,334 @@
+
+/* Order status */
+
+.uv-order-status {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    line-height: 1.5;
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.uv-order-status-pending {
+    background: #fff4d6;
+    color: #946200;
+}
+
+.uv-order-status-confirmed {
+    background: #e8f1ff;
+    color: #2457b8;
+}
+
+.uv-order-status-shipped {
+    background: #f0eaff;
+    color: #6941c6;
+}
+
+.uv-order-status-delivered {
+    background: #e5f5e9;
+    color: #18743b;
+}
+
+.uv-order-status-cancelled {
+    background: #feecec;
+    color: #b42318;
+}
+
+/* Order list */
+
+.uv-order-tabs {
+    display: flex;
+    gap: 24px;
+    padding: 0 20px;
+    border-bottom: 1px solid #e5e7eb;
+    overflow-x: auto;
+}
+
+.uv-order-tabs button {
+    flex-shrink: 0;
+    border: none;
+    border-bottom: 3px solid transparent;
+    background: transparent;
+    padding: 17px 2px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #64748b;
+    cursor: pointer;
+}
+
+.uv-order-tabs button:hover {
+    color: #131921;
+}
+
+.uv-order-tabs button.active {
+    border-bottom-color: #ff9900;
+    color: #131921;
+    font-weight: 600;
+}
+
+.uv-order-table {
+    min-width: 900px;
+}
+
+.uv-order-id {
+    color: #1769aa;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.uv-order-id:hover {
+    text-decoration: underline;
+}
+
+.uv-order-money {
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.uv-order-table a.uv-icon-btn {
+    text-decoration: none;
+}
+
+/* Order detail */
+
+.uv-order-detail-heading {
+    margin-top: 16px;
+}
+
+.uv-order-heading-title {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.uv-order-heading-title h1 {
+    margin: 0;
+}
+
+.uv-order-detail-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 2.2fr) minmax(250px, 1fr);
+    align-items: start;
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.uv-order-detail-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    min-width: 0;
+}
+
+.uv-order-section-heading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 18px 20px;
+    border-bottom: 1px solid #e5e7eb;
+    color: #131921;
+}
+
+.uv-order-section-heading h3 {
+    font-size: 15px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.uv-order-section-heading svg {
+    color: #64748b;
+}
+
+.uv-order-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 20px;
+}
+
+.uv-order-meta > span {
+    font-size: 12px;
+    color: #64748b;
+}
+
+.uv-order-meta > strong {
+    font-size: 14px;
+    font-weight: 500;
+    overflow-wrap: anywhere;
+    margin-bottom: 10px;
+}
+
+.uv-order-items {
+    min-width: 560px;
+}
+
+.uv-order-item-name {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.uv-order-item-name a {
+    color: #131921;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.uv-order-item-name a:hover {
+    color: #b12704;
+    text-decoration: underline;
+}
+
+.uv-order-item-name small {
+    color: #64748b;
+    font-size: 12px;
+}
+
+.uv-order-total {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 20px;
+    padding: 22px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.uv-order-total span {
+    font-size: 14px;
+    color: #64748b;
+}
+
+.uv-order-total strong {
+    font-size: 23px;
+    color: #b12704;
+}
+
+/* Order progress */
+
+.uv-order-progress {
+    padding: 22px;
+}
+
+.uv-order-progress h3 {
+    margin: 0 0 24px;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.uv-order-steps {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.uv-order-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    gap: 12px;
+    text-align: center;
+}
+
+.uv-order-step:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    top: 21px;
+    left: calc(50% + 24px);
+    width: calc(100% - 48px);
+    height: 2px;
+    background: #e2e8f0;
+}
+
+.uv-order-step.completed:not(.current)::after {
+    background: #16a34a;
+}
+
+.uv-order-step-icon {
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: #f1f5f9;
+    color: #94a3b8;
+}
+
+.uv-order-step span {
+    font-size: 13px;
+    color: #64748b;
+}
+
+.uv-order-step.completed .uv-order-step-icon {
+    background: #e5f5e9;
+    color: #16803d;
+}
+
+.uv-order-step.completed span {
+    color: #16803d;
+}
+
+.uv-order-step.current .uv-order-step-icon {
+    background: #ff9900;
+    color: #131921;
+}
+
+.uv-order-step.current span {
+    color: #131921;
+    font-weight: 600;
+}
+
+.uv-order-cancelled {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: #fff1f1;
+    color: #b42318;
+    padding: 16px;
+    border-radius: 4px;
+}
+
+.uv-order-cancelled p {
+    font-size: 13px;
+    margin: 6px 0 0;
+}
+
+@media (max-width: 1100px) {
+    .uv-order-detail-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .uv-order-detail-sidebar {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 600px) {
+    .uv-order-detail-sidebar {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .uv-order-tabs {
+        gap: 18px;
+        padding: 0 14px;
+    }
+
+    .uv-order-progress {
+        padding: 16px;
+    }
+
+    .uv-order-step span {
+        font-size: 11px;
+    }
+
+    .uv-order-total strong {
+        font-size: 20px;
+    }
+}
