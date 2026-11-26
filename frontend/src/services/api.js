@@ -3,8 +3,8 @@ import axios from "axios";
 export const AUTH_TOKEN_KEY = "uvmart_token";
 
 const api = axios.create({
-    baseURL: "/api",
-    timeout: 10000,
+    baseURL: import.meta.env.VITE_API_URL || "/api",
+    timeout: 60000,
 });
 
 export function setAuthToken(token) {
