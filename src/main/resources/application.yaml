@@ -13,14 +13,18 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: true
+    show-sql: ${SHOW_SQL:false}
     properties:
       hibernate:
         format_sql: true
+
   data:
     redis:
-      host: localhost
-      port: 6380
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6380}
+      password: ${SPRING_DATA_REDIS_PASSWORD:}
+      ssl:
+        enabled: ${SPRING_DATA_REDIS_SSL_ENABLED:false}
 
   cache:
     type: redis
@@ -36,8 +40,8 @@ spring:
 
 logging:
   level:
-    org.springframework.security: DEBUG
-    org.springframework.cache.interceptor: TRACE
+    org.springframework.security: ${SECURITY_LOG_LEVEL:WARN}
+    org.springframework.cache.interceptor: ${CACHE_LOG_LEVEL:INFO}
 
 cloudinary:
   cloud-name: ${CLOUDINARY_CLOUD_NAME}
@@ -45,4 +49,4 @@ cloudinary:
   api-secret: ${CLOUDINARY_API_SECRET}
 
 server:
-  port: 8081
+  port: ${PORT:8081}
