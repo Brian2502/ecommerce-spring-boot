@@ -1,9 +1,18 @@
-
 # UVMart - Full-stack E-commerce
 
 UVMart is a full-stack e-commerce application for electronics, laptops, smartphones, and accessories, built with Java 21, Spring Boot, React, and PostgreSQL.
 
 The application includes a customer storefront and an administration dashboard, with a focus on REST API development, inventory management, transaction consistency, concurrency control, and automated testing.
+
+## Live Demo
+
+- **Website:** https://uvmart-psi.vercel.app/
+- **Backend API:** https://uvmart-api.onrender.com
+- **Swagger UI:** https://uvmart-api.onrender.com/swagger-ui/index.html
+
+> The backend may take longer to respond after inactivity due to Render cold starts. If the initial request times out, wait for the backend to start and reload the page.
+
+> This is an educational portfolio project. It does not process real payments.
 
 ## Tech Stack
 
@@ -19,6 +28,7 @@ The application includes a customer storefront and an administration dashboard, 
 | Testing | JUnit 5, Mockito, Spring Boot Test |
 | Build Tools | Maven, npm |
 | DevOps | Docker, Docker Compose, GitHub Actions |
+| Cloud Deployment | Vercel, Render, Neon, Upstash |
 
 ## Features
 
@@ -54,6 +64,8 @@ The application includes a customer storefront and an administration dashboard, 
 ### Authentication and Authorization
 
 - JWT-based authentication.
+- Password hashing with BCrypt.
+- Environment-based CORS configuration.
 - Stateless authentication with Spring Security.
 - Role-based access control for ADMIN and USER.
 - Protected backend endpoints.
@@ -130,13 +142,13 @@ The application follows a layered architecture with a separate React frontend an
 
 ```mermaid
 flowchart TD
-    A[React Frontend] -->|REST API / JSON| B[Spring Boot Backend]
+    A[React Frontend - Vercel] -->|REST API / JSON| B[Spring Boot Backend - Render]
     B --> C[Spring Security / JWT]
     C --> D[Controllers]
     D --> E[Services]
     E --> F[Repositories]
-    F --> G[(PostgreSQL)]
-    E --> H[(Redis)]
+    F --> G[(PostgreSQL - Neon)]
+    E --> H[(Redis - Upstash)]
     E --> I[Cloudinary]
 ```
 
@@ -196,7 +208,11 @@ Protected endpoints require a valid JWT. Administration endpoints require the AD
 
 The backend test suite includes unit tests and integration tests covering business logic, checkout, inventory management, concurrency, and transaction rollback.
 
-**Latest local test result: 21 tests passed, 0 failures.**
+**Previously recorded local test result: 21 tests passed, 0 failures.**
+
+### Production Smoke Testing
+
+The deployed application has been manually tested for administrator access, product variant management, shopping cart and checkout, order processing through delivery, and pending order cancellation with inventory restoration. These manual checks complement the automated backend tests.
 
 ### Integration Test Scenarios
 
@@ -247,6 +263,19 @@ The project includes a GitHub Actions workflow for:
 - PostgreSQL and Redis services for integration testing.
 - Docker image build verification.
 
+## Cloud Deployment
+
+| Component | Platform |
+|---|---|
+| React frontend | Vercel |
+| Spring Boot backend | Render (Docker) |
+| PostgreSQL database | Neon |
+| Redis cache | Upstash (TLS) |
+| Product image storage | Cloudinary |
+| Continuous integration | GitHub Actions |
+
+The frontend communicates with the backend over HTTPS. Production configuration is managed using environment variables, including the API base URL, allowed CORS origins, database credentials, Redis credentials, JWT secret, and Cloudinary credentials.
+
 ## Getting Started
 
 ### Prerequisites
@@ -288,6 +317,7 @@ The backend requires configuration for:
 - JWT secret and expiration.
 - Redis connection.
 - Cloudinary credentials.
+- Allowed frontend origins (`APP_CORS_ALLOWED_ORIGINS`).
 
 Never commit real passwords, JWT secrets, API keys, or other credentials.
 
@@ -321,7 +351,21 @@ npm install
 npm run dev
 ```
 
-Configure the frontend API connection according to the project configuration.
+The frontend uses `VITE_API_URL` when configured, otherwise it uses the relative `/api` path with the local Vite proxy.
+
+For production, set the following variable in Vercel and rebuild the frontend:
+
+```env
+VITE_API_URL=https://uvmart-api.onrender.com/api
+```
+
+On Render, configure the allowed frontend origin:
+
+```env
+APP_CORS_ALLOWED_ORIGINS=https://uvmart-psi.vercel.app
+```
+
+For local development, the default allowed origin is `http://localhost:5173`.
 
 The default Vite development URL is:
 
@@ -372,12 +416,14 @@ Once the backend is running:
 
 - Swagger UI: http://localhost:8081/swagger-ui/index.html
 - OpenAPI Specification: http://localhost:8081/v3/api-docs
+- Production Swagger UI: https://uvmart-api.onrender.com/swagger-ui/index.html
+- Production OpenAPI: https://uvmart-api.onrender.com/v3/api-docs
 
 To test protected endpoints, log in to obtain a JWT and use the Authorize button in Swagger UI.
 
 ## Future Improvements
 
-- Production deployment.
+- Improved loading and retry experience during backend cold starts.
 - Online payment integration.
 - Email notifications.
 - Asynchronous order processing with RabbitMQ.
@@ -389,4 +435,3 @@ To test protected endpoints, log in to obtain a JWT and use the Authorize button
 **Ha Hoang Uy Vu**
 
 GitHub: https://github.com/Brian2502
-
